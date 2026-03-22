@@ -140,6 +140,71 @@ class TestProfileReportToJson:
             assert isinstance(col_data["column_type"], str)
 
 
+class TestProfileReportCorrelations:
+    def test_correlations_property(self, mixed_df: pl.DataFrame):
+        report = ProfileReport(mixed_df)
+        assert isinstance(report.correlations, dict)
+        assert "pearson" in report.correlations
+
+    def test_correlations_in_to_dict(self, mixed_df: pl.DataFrame):
+        report = ProfileReport(mixed_df)
+        d = report.to_dict()
+        assert "correlations" in d
+        assert "pearson" in d["correlations"]
+
+    def test_no_correlations_minimal(self, mixed_df: pl.DataFrame):
+        report = ProfileReport(mixed_df, minimal=True)
+        assert report.correlations == {}
+
+    def test_no_correlations_single_numeric(self):
+        df = pl.DataFrame({"a": [1, 2, 3], "b": ["x", "y", "z"]})
+        report = ProfileReport(df)
+        assert report.correlations == {}
+
+
+class TestProfileReportToHtml:
+    def test_to_html_returns_string(self, mixed_df: pl.DataFrame):
+        report = ProfileReport(mixed_df)
+        html = report.to_html()
+        assert isinstance(html, str)
+        assert "<!DOCTYPE html>" in html
+
+    def test_to_html_contains_title(self, mixed_df: pl.DataFrame):
+        report = ProfileReport(mixed_df, title="HTML Test")
+        html = report.to_html()
+        assert "HTML Test" in html
+
+    def test_to_html_writes_file(self, tmp_path: Path, mixed_df: pl.DataFrame):
+        report = ProfileReport(mixed_df)
+        html_path = tmp_path / "report.html"
+        report.to_html(path=html_path)
+        assert html_path.exists()
+        content = html_path.read_text()
+        assert "<!DOCTYPE html>" in content
+
+    def test_to_html_contains_columns(self, mixed_df: pl.DataFrame):
+        report = ProfileReport(mixed_df)
+        html = report.to_html()
+        assert "age" in html
+        assert "salary" in html
+        assert "city" in html
+
+    def test_to_html_contains_charts(self, mixed_df: pl.DataFrame):
+        report = ProfileReport(mixed_df)
+        html = report.to_html()
+        assert "echarts.init" in html
+
+    def test_to_html_contains_correlations(self, mixed_df: pl.DataFrame):
+        report = ProfileReport(mixed_df)
+        html = report.to_html()
+        assert "corr_heatmap" in html
+
+    def test_to_html_no_correlation_minimal(self, mixed_df: pl.DataFrame):
+        report = ProfileReport(mixed_df, minimal=True)
+        html = report.to_html()
+        assert "corr_heatmap" not in html
+
+
 class TestProfileReportEdgeCases:
     def test_empty_dataframe(self, empty_df: pl.DataFrame):
         report = ProfileReport(empty_df)

@@ -28,5 +28,8 @@ Thumbs.db
 htmlcov/
 .mypy_cache/
 
+# Reports
+reports/
+
 # Jupyter
 .ipynb_checkpoints/

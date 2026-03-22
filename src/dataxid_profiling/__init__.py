@@ -6,17 +6,19 @@ import json
 from dataclasses import asdict
 from typing import TYPE_CHECKING, Any
 
+import polars as pl  # noqa: TC002 — used at runtime
+
 from dataxid_profiling._alerts import Alert, AlertType, check_quality
 from dataxid_profiling._analyzers import ColumnStats, analyze
 from dataxid_profiling._config import ProfileConfig
+from dataxid_profiling._correlations import compute_correlations
 from dataxid_profiling._dataset_overview import DatasetOverview, compute_overview
 from dataxid_profiling._ingest import ingest
+from dataxid_profiling._report._html import render_html
 from dataxid_profiling._type_inference import ColumnType, infer_types
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    import polars as pl
 
 __version__ = "0.1.0"
 
@@ -57,6 +59,9 @@ class ProfileReport:
         self._alerts: list[Alert] = check_quality(
             self._column_stats, self._overview, self._config
         )
+        self._correlations: dict[str, pl.DataFrame] = compute_correlations(
+            self._df, self._column_types, self._config
+        )
 
     @property
     def config(self) -> ProfileConfig:
@@ -82,7 +87,15 @@ class ProfileReport:
     def stats(self) -> dict[str, dict[str, Any]]:
         return {name: asdict(s) for name, s in self._column_stats.items()}
 
+    @property
+    def correlations(self) -> dict[str, pl.DataFrame]:
+        return self._correlations
+
     def to_dict(self) -> dict[str, Any]:
+        corr_dict = {}
+        for method, matrix in self._correlations.items():
+            corr_dict[method] = matrix.to_dicts()
+
         return {
             "title": self._config.title,
             "overview": self.overview,
@@ -95,7 +108,24 @@ class ProfileReport:
                 }
                 for a in self._alerts
             ],
+            "correlations": corr_dict,
         }
+
+    def to_html(self, path: str | Path | None = None) -> str:
+        html = render_html(
+            title=self._config.title,
+            version=__version__,
+            overview=self._overview,
+            column_stats=self._column_stats,
+            alerts=self._alerts,
+            correlations=self._correlations,
+        )
+        if path is not None:
+            from pathlib import Path as P
+
+            P(path).write_text(html, encoding="utf-8")
+
+        return html
 
     def to_json(self, path: str | Path | None = None, indent: int = 2) -> str:
         data = self.to_dict()
