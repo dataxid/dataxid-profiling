@@ -25,16 +25,22 @@ report = ProfileReport(pd.read_csv("data.csv"))
 
 ## Report Preview
 
+**Dataset overview** — row/column counts, missing cells, duplicates, memory usage, and column type distribution at a glance.
+
 <p align="center">
   <img src="docs/report-overview.png" alt="Dataset overview and alerts" width="700">
 </p>
+
+**Column details** — per-column statistics, top value distribution, and word clouds for categorical data.
 
 <p align="center">
   <img src="docs/report-columns.png" alt="Column details with charts and word cloud" width="700">
 </p>
 
+**Correlations** — interactive heatmap showing relationships between numeric columns.
+
 <p align="center">
-  <img src="docs/report-correlations.png" alt="Pearson correlation heatmap" width="700">
+  <img src="docs/report-correlations.png" alt="Correlation heatmap" width="700">
 </p>
 
 ## Highlights
@@ -61,7 +67,7 @@ pip install dataxid-profiling
 ### Programmatic access
 
 ```python
-report = ProfileReport(df, title="My Data")
+report = ProfileReport(df, title="Customer Data Profile")
 
 stats = report.to_dict()
 alerts = report.alerts
@@ -81,7 +87,7 @@ report.to_json("report.json")
 from dataxid_profiling import ProfileReport, ProfileConfig
 
 config = ProfileConfig(
-    title="My Data",
+    title="Customer Data Profile",
     mode="overview",
     missing_threshold=0.1,
     histogram_bins=30,

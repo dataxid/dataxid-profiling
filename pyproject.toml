@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-authors = [{ name = "Dataxid", email = "hello@dataxid.com" }]
+authors = [{ name = "DataXID", email = "dev@dataxid.com" }]
 keywords = [
     "polars",
     "profiling",
