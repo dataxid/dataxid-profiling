@@ -33,27 +33,48 @@ class NumericStats(BaseStats):
     distinct_pct: float = 0.0
     mean: float | None = None
     std: float | None = None
+    variance: float | None = None
+    sum: float | None = None
     min: float | None = None
     max: float | None = None
     range: float | None = None
     q25: float | None = None
     median: float | None = None
     q75: float | None = None
+    p5: float | None = None
+    p95: float | None = None
     iqr: float | None = None
+    cv: float | None = None
+    mad: float | None = None
     skewness: float | None = None
     kurtosis: float | None = None
     zeros_count: int = 0
     zeros_pct: float = 0.0
     negative_count: int = 0
     negative_pct: float = 0.0
+    n_infinite: int = 0
+    monotonic_increase: bool = False
+    monotonic_decrease: bool = False
     histogram: list[dict[str, Any]] = field(default_factory=list)
+    value_counts: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
 class CategoricalStats(BaseStats):
     distinct_count: int = 0
     distinct_pct: float = 0.0
+    imbalance: float | None = None
+    length_min: int | None = None
+    length_max: int | None = None
+    length_mean: float | None = None
+    length_median: float | None = None
+    word_count_mean: float | None = None
+    n_characters: int | None = None
+    n_characters_distinct: int | None = None
+    has_non_ascii: bool = False
     top_values: list[dict[str, Any]] = field(default_factory=list)
+    character_counts: list[dict[str, Any]] = field(default_factory=list)
+    length_histogram: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

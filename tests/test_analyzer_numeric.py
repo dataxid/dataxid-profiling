@@ -141,3 +141,95 @@ class TestNumericEdgeCases:
         df = pl.DataFrame({"val": pl.Series([1.5, 2.5, 3.5], dtype=pl.Float32)})
         stats = analyze_numeric(df, "val", config)
         assert stats.mean == pytest.approx(2.5, abs=0.01)
+
+
+class TestNumericNewMetrics:
+    def test_sum(self, config: ProfileConfig):
+        df = pl.DataFrame({"val": [10, 20, 30]})
+        stats = analyze_numeric(df, "val", config)
+        assert stats.sum == pytest.approx(60.0)
+
+    def test_variance(self, config: ProfileConfig):
+        df = pl.DataFrame({"val": [10.0, 20.0, 30.0, 40.0, 50.0]})
+        stats = analyze_numeric(df, "val", config)
+        assert stats.variance is not None
+        assert stats.variance > 0
+        assert stats.std is not None
+        assert stats.variance == pytest.approx(stats.std**2, rel=1e-3)
+
+    def test_cv(self, config: ProfileConfig):
+        df = pl.DataFrame({"val": [10.0, 20.0, 30.0, 40.0, 50.0]})
+        stats = analyze_numeric(df, "val", config)
+        assert stats.cv is not None
+        assert stats.cv == pytest.approx(stats.std / abs(stats.mean), rel=1e-3)
+
+    def test_cv_zero_mean(self, config: ProfileConfig):
+        df = pl.DataFrame({"val": [-1.0, 0.0, 1.0]})
+        stats = analyze_numeric(df, "val", config)
+        assert stats.cv is None
+
+    def test_mad(self, config: ProfileConfig):
+        df = pl.DataFrame({"val": [1.0, 2.0, 3.0, 4.0, 5.0]})
+        stats = analyze_numeric(df, "val", config)
+        assert stats.mad is not None
+        assert stats.mad == pytest.approx(1.0)
+
+    def test_p5_p95(self, config: ProfileConfig):
+        df = pl.DataFrame({"val": list(range(1, 101))})
+        stats = analyze_numeric(df, "val", config)
+        assert stats.p5 is not None
+        assert stats.p95 is not None
+        assert stats.p5 < stats.q25
+        assert stats.p95 > stats.q75
+
+    def test_n_infinite(self, config: ProfileConfig):
+        df = pl.DataFrame({"val": [1.0, float("inf"), -float("inf"), 4.0]})
+        stats = analyze_numeric(df, "val", config)
+        assert stats.n_infinite == 2
+
+    def test_n_infinite_none_for_int(self, config: ProfileConfig):
+        df = pl.DataFrame({"val": [1, 2, 3, 4, 5]})
+        stats = analyze_numeric(df, "val", config)
+        assert stats.n_infinite == 0
+
+    def test_monotonic_increase(self, config: ProfileConfig):
+        df = pl.DataFrame({"val": [1, 2, 3, 4, 5]})
+        stats = analyze_numeric(df, "val", config)
+        assert stats.monotonic_increase is True
+        assert stats.monotonic_decrease is False
+
+    def test_monotonic_decrease(self, config: ProfileConfig):
+        df = pl.DataFrame({"val": [5, 4, 3, 2, 1]})
+        stats = analyze_numeric(df, "val", config)
+        assert stats.monotonic_increase is False
+        assert stats.monotonic_decrease is True
+
+    def test_monotonic_constant(self, config: ProfileConfig):
+        df = pl.DataFrame({"val": [3, 3, 3, 3]})
+        stats = analyze_numeric(df, "val", config)
+        assert stats.monotonic_increase is True
+        assert stats.monotonic_decrease is True
+
+    def test_monotonic_non_monotonic(self, config: ProfileConfig):
+        df = pl.DataFrame({"val": [1, 3, 2, 4]})
+        stats = analyze_numeric(df, "val", config)
+        assert stats.monotonic_increase is False
+        assert stats.monotonic_decrease is False
+
+    def test_monotonic_with_nulls(self, config: ProfileConfig):
+        df = pl.DataFrame({"val": [1, None, 3, None, 5]})
+        stats = analyze_numeric(df, "val", config)
+        assert stats.monotonic_increase is True
+
+    def test_value_counts(self, config: ProfileConfig):
+        df = pl.DataFrame({"val": [1, 1, 1, 2, 2, 3]})
+        stats = analyze_numeric(df, "val", config)
+        assert len(stats.value_counts) > 0
+        assert stats.value_counts[0]["value"] == 1
+        assert stats.value_counts[0]["count"] == 3
+
+    def test_value_counts_respects_n_top(self):
+        df = pl.DataFrame({"val": [1, 1, 2, 2, 3, 3, 4, 4, 5, 5]})
+        config = ProfileConfig(n_top_values=3)
+        stats = analyze_numeric(df, "val", config)
+        assert len(stats.value_counts) == 3

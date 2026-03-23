@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Literal
+
+VALID_MODES = ("complete", "overview")
 
 
 @dataclass(frozen=True)
@@ -26,13 +29,20 @@ class ProfileConfig:
     n_top_values: int = 5  # value_counts'ta gösterilecek top N
     histogram_bins: int = 50
 
-    # Minimal mode — sadece temel istatistikler, korelasyon yok
-    minimal: bool = False
+    # Profiling depth: "complete" (default) or "overview" (skip expensive computations)
+    mode: Literal["complete", "overview"] = "complete"
 
     # Kolon bazlı override
     column_overrides: dict[str, dict] = field(default_factory=dict)
 
+    @property
+    def is_overview(self) -> bool:
+        return self.mode == "overview"
+
     def __post_init__(self) -> None:
+        if self.mode not in VALID_MODES:
+            msg = f"mode must be one of {VALID_MODES}, got '{self.mode}'"
+            raise ValueError(msg)
         if not 0.0 <= self.text_unique_ratio <= 1.0:
             msg = f"text_unique_ratio must be in [0, 1], got {self.text_unique_ratio}"
             raise ValueError(msg)

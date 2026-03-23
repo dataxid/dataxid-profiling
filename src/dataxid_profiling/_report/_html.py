@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import base64
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -40,19 +40,23 @@ def render_html(
 
     columns = _prepare_columns(column_stats, renderer)
     correlation_chart = _prepare_correlation_chart(correlations, renderer)
+    missing_bar_chart = _prepare_missing_bar_chart(overview, renderer)
     alert_dicts = [
         {"column": a.column, "alert_type": a.alert_type.name, "value": a.value}
         for a in alerts
     ]
 
+    ov_dict = asdict(overview)
+
     return template.render(
         title=title,
         version=version,
-        generated_at=datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
-        overview=asdict(overview),
+        generated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
+        overview=ov_dict,
         columns=columns,
         alerts=alert_dicts,
         correlation_chart=correlation_chart,
+        missing_bar_chart=missing_bar_chart,
         logo_b64=_load_asset_b64("dataxid_logo.png"),
         icon_b64=_load_asset_b64("icon.png"),
     )
@@ -89,7 +93,10 @@ def _format_pct(value: Any) -> str:
     if value is None:
         return "—"
     try:
-        return f"{float(value) * 100:.1f}%"
+        pct = float(value) * 100
+        if 0 < pct < 0.1:
+            return "<0.1%"
+        return f"{pct:.1f}%"
     except (TypeError, ValueError):
         return str(value)
 
@@ -153,6 +160,26 @@ def _wordcloud_for_column(stats: ColumnStats, renderer: ChartRenderer, idx: int)
     words = [str(tv["value"]) for tv in stats.top_values]
     weights = [tv["count"] for tv in stats.top_values]
     return renderer.word_cloud(f"col_wc_{idx}", words, weights, title="Word Cloud")
+
+
+def _prepare_missing_bar_chart(
+    overview: DatasetOverview,
+    renderer: ChartRenderer,
+) -> str:
+    missing = overview.missing_per_column
+    if not missing:
+        return ""
+    cols_with_missing = {
+        col: info for col, info in missing.items() if info["count"] > 0
+    }
+    if not cols_with_missing:
+        return ""
+    labels = list(cols_with_missing.keys())
+    values = [info["count"] for info in cols_with_missing.values()]
+    return renderer.bar_horizontal(
+        "missing_bar", labels, values, title="Missing Values per Column"
+    )
+
 
 
 def _prepare_correlation_chart(

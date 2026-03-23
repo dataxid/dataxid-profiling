@@ -75,8 +75,8 @@ class TestCorrelationEdgeCases:
         result = _corr(categorical_df)
         assert result == {}
 
-    def test_minimal_mode_skips(self, numeric_df: pl.DataFrame):
-        config = ProfileConfig(minimal=True)
+    def test_overview_mode_skips(self, numeric_df: pl.DataFrame):
+        config = ProfileConfig(mode="overview")
         result = _corr(numeric_df, config)
         assert result == {}
 

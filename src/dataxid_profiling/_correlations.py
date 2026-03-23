@@ -20,9 +20,9 @@ def compute_correlations(
     """Compute correlation matrices for the given DataFrame.
 
     Returns a dict keyed by method name (e.g. "pearson").
-    Empty dict when fewer than 2 numeric columns or minimal mode.
+    Empty dict when fewer than 2 numeric columns or overview mode.
     """
-    if config is not None and config.minimal:
+    if config is not None and config.is_overview:
         return {}
 
     numeric_cols = sorted(

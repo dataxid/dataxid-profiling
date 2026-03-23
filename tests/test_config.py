@@ -17,9 +17,10 @@ class TestProfileConfigDefaults:
         assert cfg.correlation_threshold == 0.9
         assert cfg.text_unique_ratio == 0.5
 
-    def test_default_minimal_false(self):
+    def test_default_mode_complete(self):
         cfg = ProfileConfig()
-        assert cfg.minimal is False
+        assert cfg.mode == "complete"
+        assert cfg.is_overview is False
 
     def test_default_display(self):
         cfg = ProfileConfig()
@@ -37,9 +38,10 @@ class TestProfileConfigCustom:
         assert cfg.missing_threshold == 0.1
         assert cfg.cardinality_threshold == 0.8
 
-    def test_minimal_mode(self):
-        cfg = ProfileConfig(minimal=True)
-        assert cfg.minimal is True
+    def test_overview_mode(self):
+        cfg = ProfileConfig(mode="overview")
+        assert cfg.mode == "overview"
+        assert cfg.is_overview is True
 
     def test_column_overrides(self):
         overrides = {"age": {"missing_threshold": 0.2}}
@@ -74,3 +76,7 @@ class TestProfileConfigValidation:
     def test_invalid_histogram_bins(self):
         with pytest.raises(ValueError, match="histogram_bins"):
             ProfileConfig(histogram_bins=1)
+
+    def test_invalid_mode(self):
+        with pytest.raises(ValueError, match="mode"):
+            ProfileConfig(mode="invalid")

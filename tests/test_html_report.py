@@ -85,8 +85,8 @@ class TestRenderCorrelations:
         html = _render(df)
         assert "corr_heatmap" not in html
 
-    def test_no_correlation_minimal_mode(self, numeric_df: pl.DataFrame):
-        html = _render(numeric_df, ProfileConfig(minimal=True))
+    def test_no_correlation_overview_mode(self, numeric_df: pl.DataFrame):
+        html = _render(numeric_df, ProfileConfig(mode="overview"))
         assert "corr_heatmap" not in html
 
 
@@ -118,6 +118,60 @@ class TestRenderWordCloud:
     def test_wordcloud_cdn_included(self, categorical_df: pl.DataFrame):
         html = _render(categorical_df)
         assert "echarts-wordcloud" in html
+
+
+class TestRenderMissingSection:
+    def test_missing_section_present(self, mixed_df: pl.DataFrame):
+        html = _render(mixed_df)
+        assert "Missing Values" in html
+        assert "missing_bar" in html
+
+    def test_only_missing_columns_in_table(self):
+        df = pl.DataFrame({"a": [1, None, 3], "b": ["x", "y", "z"]})
+        html = _render(df)
+        assert "Missing Values" in html
+        table_start = html.index("Missing Values")
+        table_section = html[table_start:table_start + 3000]
+        assert ">a<" in table_section
+        assert ">b<" not in table_section
+
+    def test_no_missing_section_when_clean(self):
+        df = pl.DataFrame({"a": [1, 2, 3], "b": ["x", "y", "z"]})
+        html = _render(df)
+        assert "missing_bar" not in html
+
+
+class TestRenderSampleSection:
+    def test_sample_section_present(self, mixed_df: pl.DataFrame):
+        html = _render(mixed_df)
+        assert "Sample" in html
+        assert "sample-head" in html
+        assert "sample-tail" in html
+
+    def test_head_tail_tabs(self, mixed_df: pl.DataFrame):
+        html = _render(mixed_df)
+        assert "switchSampleTab" in html
+
+
+class TestRenderDuplicateSection:
+    def test_duplicate_section_with_dupes(self):
+        df = pl.DataFrame({"a": [1, 1, 2], "b": ["x", "x", "y"]})
+        html = _render(df)
+        assert "Duplicate Rows" in html
+        assert html.count("Duplicate Rows") >= 2
+
+    def test_no_duplicate_section_without_dupes(self):
+        df = pl.DataFrame({"a": [1, 2, 3]})
+        html = _render(df)
+        assert html.count("Duplicate Rows") == 1
+
+
+class TestRenderReproduction:
+    def test_reproduction_section(self, mixed_df: pl.DataFrame):
+        html = _render(mixed_df)
+        assert "Reproduction Details" in html
+        assert "polars_version" in html
+        assert "dataxid_profiling_version" in html
 
 
 class TestRenderEdgeCases:

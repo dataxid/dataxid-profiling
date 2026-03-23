@@ -31,7 +31,7 @@ class ProfileReport:
     Usage:
         report = ProfileReport(df)
         report = ProfileReport(df, title="My Data")
-        report = ProfileReport("data.csv", minimal=True)
+        report = ProfileReport(df, mode="overview")
     """
 
     def __init__(
@@ -39,14 +39,14 @@ class ProfileReport:
         source: Any,
         *,
         title: str = "Dataset Report",
-        minimal: bool = False,
+        mode: str = "complete",
         config: ProfileConfig | None = None,
         **kwargs: Any,
     ) -> None:
         if config is not None:
             self._config = config
         else:
-            self._config = ProfileConfig(title=title, minimal=minimal, **kwargs)
+            self._config = ProfileConfig(title=title, mode=mode, **kwargs)
 
         self._df: pl.DataFrame = ingest(source)
         self._column_types: dict[str, ColumnType] = infer_types(self._df, self._config)

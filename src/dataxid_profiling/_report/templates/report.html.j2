@@ -30,7 +30,7 @@
   <style>
     body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
     .tab-btn { transition: all 0.2s ease; }
-    .tab-btn.active { background: #0d3b3b; color: white; }
+    .tab-btn.active, .tab-btn.active:hover { background: #0d3b3b; color: white; }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
     .card { transition: box-shadow 0.2s ease; }
@@ -46,7 +46,7 @@
     <div class="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
       <div class="flex items-center gap-5">
         {% if logo_b64 %}
-        <img src="data:image/png;base64,{{ logo_b64 }}" alt="DataXID" class="h-10" />
+        <a href="https://dataxid.com?utm_source=profiling-report&amp;utm_medium=html" target="_blank" rel="noopener"><img src="data:image/png;base64,{{ logo_b64 }}" alt="DataXID" class="h-10" /></a>
         {% endif %}
         <div class="w-px h-10 bg-brand-teal/20"></div>
         <div>
@@ -125,7 +125,7 @@
         <table class="w-full text-sm">
           <thead>
             <tr class="bg-gray-50 border-b border-gray-100">
-              <th class="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Column</th>
+              <th class="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Scope</th>
               <th class="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Alert</th>
               <th class="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Value</th>
             </tr>
@@ -133,7 +133,13 @@
           <tbody>
             {% for alert in alerts %}
             <tr class="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-              <td class="px-5 py-3 font-mono text-sm text-brand-teal font-medium">{{ alert.column or "Dataset" }}</td>
+              <td class="px-5 py-3">
+                {% if alert.column %}
+                <span class="font-mono text-sm text-brand-teal font-medium">{{ alert.column }}</span>
+                {% else %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-500 italic">dataset</span>
+                {% endif %}
+              </td>
               <td class="px-5 py-3">
                 <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold
                   {% if alert.alert_type in ('HIGH_MISSING', 'DUPLICATES') %}bg-red-50 text-red-600 ring-1 ring-red-200
@@ -206,16 +212,46 @@
                   {% endif %}
 
                   {% if col_data.column_type == "NUMERIC" %}
-                  <tr class="stat-row"><td class="py-2 px-3 text-gray-500 rounded-l-lg">Mean</td><td class="py-2 px-3 text-right font-semibold text-brand-teal rounded-r-lg">{{ col_data.mean | format_float }}</td></tr>
-                  <tr class="stat-row"><td class="py-2 px-3 text-gray-500 rounded-l-lg">Std</td><td class="py-2 px-3 text-right font-semibold text-brand-teal rounded-r-lg">{{ col_data.std | format_float }}</td></tr>
-                  <tr class="stat-row"><td class="py-2 px-3 text-gray-500 rounded-l-lg">Min</td><td class="py-2 px-3 text-right font-semibold text-brand-teal rounded-r-lg">{{ col_data.min | format_float }}</td></tr>
-                  <tr class="stat-row"><td class="py-2 px-3 text-gray-500 rounded-l-lg">Q25</td><td class="py-2 px-3 text-right font-semibold text-brand-teal rounded-r-lg">{{ col_data.q25 | format_float }}</td></tr>
-                  <tr class="stat-row"><td class="py-2 px-3 text-gray-500 rounded-l-lg">Median</td><td class="py-2 px-3 text-right font-semibold text-brand-teal rounded-r-lg">{{ col_data.median | format_float }}</td></tr>
-                  <tr class="stat-row"><td class="py-2 px-3 text-gray-500 rounded-l-lg">Q75</td><td class="py-2 px-3 text-right font-semibold text-brand-teal rounded-r-lg">{{ col_data.q75 | format_float }}</td></tr>
-                  <tr class="stat-row"><td class="py-2 px-3 text-gray-500 rounded-l-lg">Max</td><td class="py-2 px-3 text-right font-semibold text-brand-teal rounded-r-lg">{{ col_data.max | format_float }}</td></tr>
-                  <tr class="stat-row"><td class="py-2 px-3 text-gray-500 rounded-l-lg">Skewness</td><td class="py-2 px-3 text-right font-semibold text-brand-teal rounded-r-lg">{{ col_data.skewness | format_float }}</td></tr>
-                  <tr class="stat-row"><td class="py-2 px-3 text-gray-500 rounded-l-lg">Kurtosis</td><td class="py-2 px-3 text-right font-semibold text-brand-teal rounded-r-lg">{{ col_data.kurtosis | format_float }}</td></tr>
-                  <tr class="stat-row"><td class="py-2 px-3 text-gray-500 rounded-l-lg">Zeros</td><td class="py-2 px-3 text-right font-semibold text-brand-teal rounded-r-lg">{{ col_data.zeros_count }} <span class="text-gray-400 font-normal">({{ col_data.zeros_pct | format_pct }})</span></td></tr>
+                  {% set s = "py-2 px-3" %}
+                  {% set l = "text-gray-500 rounded-l-lg" %}
+                  {% set r = "text-right font-semibold text-brand-teal rounded-r-lg" %}
+                  <tr class="stat-row"><td class="{{ s }} {{ l }}">Mean</td><td class="{{ s }} {{ r }}">{{ col_data.mean | format_float }}</td></tr>
+                  <tr class="stat-row"><td class="{{ s }} {{ l }}">Std</td><td class="{{ s }} {{ r }}">{{ col_data.std | format_float }}</td></tr>
+                  <tr class="stat-row"><td class="{{ s }} {{ l }}">Variance</td><td class="{{ s }} {{ r }}">{{ col_data.variance | format_float }}</td></tr>
+                  <tr class="stat-row"><td class="{{ s }} {{ l }}">Sum</td><td class="{{ s }} {{ r }}">{{ col_data.sum | format_float }}</td></tr>
+                  <tr class="stat-row"><td class="{{ s }} {{ l }}">CV</td><td class="{{ s }} {{ r }}">{{ col_data.cv | format_float }}</td></tr>
+                  <tr class="stat-row"><td class="{{ s }} {{ l }}">MAD</td><td class="{{ s }} {{ r }}">{{ col_data.mad | format_float }}</td></tr>
+                  <tr class="stat-row"><td class="{{ s }} {{ l }}">Min</td><td class="{{ s }} {{ r }}">{{ col_data.min | format_float }}</td></tr>
+                  <tr class="stat-row"><td class="{{ s }} {{ l }}">P5</td><td class="{{ s }} {{ r }}">{{ col_data.p5 | format_float }}</td></tr>
+                  <tr class="stat-row"><td class="{{ s }} {{ l }}">Q25</td><td class="{{ s }} {{ r }}">{{ col_data.q25 | format_float }}</td></tr>
+                  <tr class="stat-row"><td class="{{ s }} {{ l }}">Median</td><td class="{{ s }} {{ r }}">{{ col_data.median | format_float }}</td></tr>
+                  <tr class="stat-row"><td class="{{ s }} {{ l }}">Q75</td><td class="{{ s }} {{ r }}">{{ col_data.q75 | format_float }}</td></tr>
+                  <tr class="stat-row"><td class="{{ s }} {{ l }}">P95</td><td class="{{ s }} {{ r }}">{{ col_data.p95 | format_float }}</td></tr>
+                  <tr class="stat-row"><td class="{{ s }} {{ l }}">Max</td><td class="{{ s }} {{ r }}">{{ col_data.max | format_float }}</td></tr>
+                  <tr class="stat-row"><td class="{{ s }} {{ l }}">Range</td><td class="{{ s }} {{ r }}">{{ col_data.range | format_float }}</td></tr>
+                  <tr class="stat-row"><td class="{{ s }} {{ l }}">IQR</td><td class="{{ s }} {{ r }}">{{ col_data.iqr | format_float }}</td></tr>
+                  <tr class="stat-row"><td class="{{ s }} {{ l }}">Skewness</td><td class="{{ s }} {{ r }}">{{ col_data.skewness | format_float }}</td></tr>
+                  <tr class="stat-row"><td class="{{ s }} {{ l }}">Kurtosis</td><td class="{{ s }} {{ r }}">{{ col_data.kurtosis | format_float }}</td></tr>
+                  <tr class="stat-row"><td class="{{ s }} {{ l }}">Zeros</td><td class="{{ s }} {{ r }}">{{ col_data.zeros_count }} <span class="text-gray-400 font-normal">({{ col_data.zeros_pct | format_pct }})</span></td></tr>
+                  <tr class="stat-row"><td class="{{ s }} {{ l }}">Negatives</td><td class="{{ s }} {{ r }}">{{ col_data.negative_count }} <span class="text-gray-400 font-normal">({{ col_data.negative_pct | format_pct }})</span></td></tr>
+                  <tr class="stat-row"><td class="{{ s }} {{ l }}">Infinite</td><td class="{{ s }} {{ r }}">{{ col_data.n_infinite }}</td></tr>
+                  {% if col_data.monotonic_increase %}<tr class="stat-row"><td class="{{ s }} {{ l }}">Monotonic</td><td class="{{ s }} {{ r }}">Increasing</td></tr>{% endif %}
+                  {% if col_data.monotonic_decrease %}<tr class="stat-row"><td class="{{ s }} {{ l }}">Monotonic</td><td class="{{ s }} {{ r }}">Decreasing</td></tr>{% endif %}
+                  {% endif %}
+
+                  {% if col_data.column_type == "CATEGORICAL" %}
+                  {% set s = "py-2 px-3" %}
+                  {% set l = "text-gray-500 rounded-l-lg" %}
+                  {% set r = "text-right font-semibold text-brand-teal rounded-r-lg" %}
+                  {% if col_data.imbalance is not none %}<tr class="stat-row"><td class="{{ s }} {{ l }}">Imbalance</td><td class="{{ s }} {{ r }}">{{ col_data.imbalance | format_pct }}</td></tr>{% endif %}
+                  {% if col_data.length_mean is not none %}<tr class="stat-row"><td class="{{ s }} {{ l }}">Avg Length</td><td class="{{ s }} {{ r }}">{{ col_data.length_mean | format_float }}</td></tr>{% endif %}
+                  {% if col_data.length_min is not none %}<tr class="stat-row"><td class="{{ s }} {{ l }}">Min Length</td><td class="{{ s }} {{ r }}">{{ col_data.length_min }}</td></tr>{% endif %}
+                  {% if col_data.length_max is not none %}<tr class="stat-row"><td class="{{ s }} {{ l }}">Max Length</td><td class="{{ s }} {{ r }}">{{ col_data.length_max }}</td></tr>{% endif %}
+                  {% if col_data.length_median is not none %}<tr class="stat-row"><td class="{{ s }} {{ l }}">Median Length</td><td class="{{ s }} {{ r }}">{{ col_data.length_median | format_float }}</td></tr>{% endif %}
+                  {% if col_data.word_count_mean is not none %}<tr class="stat-row"><td class="{{ s }} {{ l }}">Avg Words</td><td class="{{ s }} {{ r }}">{{ col_data.word_count_mean | format_float }}</td></tr>{% endif %}
+                  {% if col_data.has_non_ascii %}<tr class="stat-row"><td class="{{ s }} {{ l }}">Non-ASCII</td><td class="{{ s }} {{ r }}">Yes</td></tr>{% endif %}
+                  {% if col_data.n_characters is not none %}<tr class="stat-row"><td class="{{ s }} {{ l }}">Total Chars</td><td class="{{ s }} {{ r }}">{{ col_data.n_characters | format_number }}</td></tr>{% endif %}
+                  {% if col_data.n_characters_distinct is not none %}<tr class="stat-row"><td class="{{ s }} {{ l }}">Distinct Chars</td><td class="{{ s }} {{ r }}">{{ col_data.n_characters_distinct | format_number }}</td></tr>{% endif %}
                   {% endif %}
 
                   {% if col_data.column_type == "BOOLEAN" %}
@@ -269,6 +305,154 @@
     </section>
     {% endif %}
 
+    {# ── Missing Values ── #}
+    {% if missing_bar_chart %}
+    <section>
+      <h2 class="text-lg font-semibold text-brand-teal mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Missing Values
+      </h2>
+      <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+        <div>{{ missing_bar_chart | safe }}</div>
+        {% if overview.missing_per_column %}
+        <div class="mt-6 overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-gray-50 border-b border-gray-100">
+                <th class="text-left px-4 py-2 font-semibold text-gray-500 text-xs uppercase tracking-wider">Column</th>
+                <th class="text-right px-4 py-2 font-semibold text-gray-500 text-xs uppercase tracking-wider">Missing</th>
+                <th class="text-right px-4 py-2 font-semibold text-gray-500 text-xs uppercase tracking-wider">%</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for col_name, info in overview.missing_per_column.items() if info.count > 0 %}
+              <tr class="stat-row border-b border-gray-50">
+                <td class="px-4 py-2 font-mono text-sm text-brand-teal font-medium">{{ col_name }}</td>
+                <td class="px-4 py-2 text-right font-semibold">{{ info.count | format_number }}</td>
+                <td class="px-4 py-2 text-right text-gray-500">{{ info.pct | format_pct }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endif %}
+      </div>
+    </section>
+    {% endif %}
+
+    {# ── Sample ── #}
+    {% if overview.sample_head %}
+    <section>
+      <h2 class="text-lg font-semibold text-brand-teal mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+        Sample
+      </h2>
+      <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div class="flex gap-2 px-6 pt-4">
+          <button class="tab-btn active px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white text-gray-600" onclick="switchSampleTab('head', this)">Head</button>
+          <button class="tab-btn px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white text-gray-600" onclick="switchSampleTab('tail', this)">Tail</button>
+        </div>
+        <div id="sample-head" class="p-6 overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-gray-50 border-b border-gray-100">
+                {% for col_name in overview.sample_head[0].keys() %}
+                <th class="text-left px-3 py-2 font-semibold text-gray-500 text-xs uppercase tracking-wider whitespace-nowrap">{{ col_name }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in overview.sample_head %}
+              <tr class="stat-row border-b border-gray-50">
+                {% for val in row.values() %}
+                <td class="px-3 py-2 whitespace-nowrap max-w-xs truncate" title="{{ val }}">{{ val if val is not none else "null" }}</td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div id="sample-tail" class="p-6 overflow-x-auto" style="display:none">
+          {% if overview.sample_tail %}
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-gray-50 border-b border-gray-100">
+                {% for col_name in overview.sample_tail[0].keys() %}
+                <th class="text-left px-3 py-2 font-semibold text-gray-500 text-xs uppercase tracking-wider whitespace-nowrap">{{ col_name }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in overview.sample_tail %}
+              <tr class="stat-row border-b border-gray-50">
+                {% for val in row.values() %}
+                <td class="px-3 py-2 whitespace-nowrap max-w-xs truncate" title="{{ val }}">{{ val if val is not none else "null" }}</td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% endif %}
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
+    {# ── Duplicate Rows ── #}
+    {% if overview.duplicate_rows_sample %}
+    <section>
+      <h2 class="text-lg font-semibold text-brand-teal mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        Duplicate Rows
+        <span class="ml-1 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-brand-coral text-white">
+          {{ overview.duplicate_rows | format_number }}
+        </span>
+      </h2>
+      <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-6 overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-50 border-b border-gray-100">
+              {% for col_name in overview.duplicate_rows_sample[0].keys() %}
+              <th class="text-left px-3 py-2 font-semibold text-gray-500 text-xs uppercase tracking-wider whitespace-nowrap">{{ col_name }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in overview.duplicate_rows_sample %}
+            <tr class="stat-row border-b border-gray-50">
+              {% for val in row.values() %}
+              <td class="px-3 py-2 whitespace-nowrap max-w-xs truncate" title="{{ val }}">{{ val if val is not none else "null" }}</td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+
+    {# ── Reproduction ── #}
+    {% if overview.reproduction %}
+    <section>
+      <h2 class="text-lg font-semibold text-brand-teal mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Reproduction Details
+      </h2>
+      <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+        <table class="text-sm">
+          <tbody>
+            {% for key, val in overview.reproduction.items() %}
+            <tr class="stat-row">
+              <td class="py-2 px-4 text-gray-500 font-medium">{{ key }}</td>
+              <td class="py-2 px-4 font-mono text-brand-teal">{{ val }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+
   </main>
 
   {# ── Footer ── #}
@@ -290,16 +474,21 @@
   {# ── Tab switching JS ── #}
   <script>
     function switchTab(idx, btn) {
-      document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); });
+      document.querySelectorAll('#col-tabs .tab-btn').forEach(b => { b.classList.remove('active'); });
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
       var panel = document.getElementById('panel-' + idx);
       if (panel) panel.classList.add('active');
-      // Re-init echarts in the panel (resize fix)
       panel.querySelectorAll('[id^="col_chart_"],[id^="col_wc_"]').forEach(function(el) {
         var chart = echarts.getInstanceByDom(el);
         if (chart) chart.resize();
       });
+    }
+    function switchSampleTab(which, btn) {
+      btn.parentElement.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('sample-head').style.display = which === 'head' ? 'block' : 'none';
+      document.getElementById('sample-tail').style.display = which === 'tail' ? 'block' : 'none';
     }
   </script>
 

@@ -152,8 +152,8 @@ class TestProfileReportCorrelations:
         assert "correlations" in d
         assert "pearson" in d["correlations"]
 
-    def test_no_correlations_minimal(self, mixed_df: pl.DataFrame):
-        report = ProfileReport(mixed_df, minimal=True)
+    def test_no_correlations_overview(self, mixed_df: pl.DataFrame):
+        report = ProfileReport(mixed_df, mode="overview")
         assert report.correlations == {}
 
     def test_no_correlations_single_numeric(self):
@@ -199,8 +199,8 @@ class TestProfileReportToHtml:
         html = report.to_html()
         assert "corr_heatmap" in html
 
-    def test_to_html_no_correlation_minimal(self, mixed_df: pl.DataFrame):
-        report = ProfileReport(mixed_df, minimal=True)
+    def test_to_html_no_correlation_overview(self, mixed_df: pl.DataFrame):
+        report = ProfileReport(mixed_df, mode="overview")
         html = report.to_html()
         assert "corr_heatmap" not in html
 
