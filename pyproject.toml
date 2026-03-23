@@ -1,22 +1,37 @@
 [project]
 name = "dataxid-profiling"
 version = "0.1.0"
-description = "Fast, Polars-native data profiling. The modern alternative to ydata-profiling."
+description = "Fast, Polars-native data profiling with interactive HTML reports and data quality alerts."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [{ name = "Dataxid", email = "hello@dataxid.com" }]
-keywords = ["polars", "profiling", "eda", "data-quality", "pandas-profiling"]
+keywords = [
+    "polars",
+    "profiling",
+    "eda",
+    "data-quality",
+    "data-profiling",
+    "exploratory-data-analysis",
+    "pandas-profiling",
+    "ydata-profiling",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
     "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Information Analysis",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3 :: Only",
+    "Operating System :: OS Independent",
+    "Typing :: Typed",
 ]
 
 dependencies = [
@@ -25,9 +40,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/dataxid/dataxid-profiling"
-Documentation = "https://docs.dataxid.com/profiling"
+Homepage = "https://dataxid.com"
 Repository = "https://github.com/dataxid/dataxid-profiling"
+Changelog = "https://github.com/dataxid/dataxid-profiling/blob/main/CHANGELOG.md"
+Issues = "https://github.com/dataxid/dataxid-profiling/issues"
 
 [dependency-groups]
 dev = [
@@ -42,6 +58,8 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/dataxid_profiling"]
+[tool.hatch.build.targets.wheel.force-include]
+"src/dataxid_profiling/py.typed" = "dataxid_profiling/py.typed"
 
 [tool.ruff]
 target-version = "py310"
@@ -49,10 +67,11 @@ line-length = 99
 src = ["src", "tests"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM", "TCH"]
+select = ["E", "F", "I", "UP", "B", "SIM", "TCH", "ARG", "T201"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["dataxid_profiling"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+xfail_strict = true

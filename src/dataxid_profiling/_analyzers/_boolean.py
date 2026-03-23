@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from dataxid_profiling._config import ProfileConfig
 
 
-def analyze_boolean(df: pl.DataFrame, col_name: str, config: ProfileConfig) -> BooleanStats:
+def analyze_boolean(df: pl.DataFrame, col_name: str, config: ProfileConfig) -> BooleanStats:  # noqa: ARG001
     col = pl.col(col_name)
     n_rows = df.height
 

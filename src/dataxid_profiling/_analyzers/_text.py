@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from dataxid_profiling._config import ProfileConfig
 
 
-def analyze_text(df: pl.DataFrame, col_name: str, config: ProfileConfig) -> TextStats:
+def analyze_text(df: pl.DataFrame, col_name: str, config: ProfileConfig) -> TextStats:  # noqa: ARG001
     col = pl.col(col_name)
     n_rows = df.height
 

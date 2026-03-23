@@ -26,6 +26,7 @@ class TestPolarsInput:
 
 class TestPandasInput:
     def test_pandas_auto_convert(self, numeric_df: pl.DataFrame):
+        pytest.importorskip("pyarrow")
         pd = pytest.importorskip("pandas")
         pdf = numeric_df.to_pandas()
         assert isinstance(pdf, pd.DataFrame)
@@ -35,6 +36,7 @@ class TestPandasInput:
         assert result.shape == numeric_df.shape
 
     def test_pandas_column_names_preserved(self):
+        pytest.importorskip("pyarrow")
         pd = pytest.importorskip("pandas")
         pdf = pd.DataFrame({"col_a": [1, 2], "col_b": ["x", "y"]})
         result = ingest(pdf)
