@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - 2026-03-27
+
+### Added
+
+- 5 correlation types: Spearman, Kendall tau-b, Cramér's V, Phi K — with interactive tab-based HTML heatmaps
+- Phi K displayed first as universal metric (all column types, single comparable scale)
+- Kendall tau-b via scipy C merge-sort — O(n log n) replacing O(n²) polars-statistics
+- Cramér's V via Polars `group_by` + `pivot` contingency tables + `ps.cramers_v` (Rust)
+- Phi K via Polars contingency tables + `ps.chisq_test` (Rust) + `phik_from_chi2` with noise correction
+- `HIGH_CORRELATION` alert — scans Phi K matrix for pairs above threshold (default 0.8)
+- `UNIFORM` alert — chi-squared goodness-of-fit test via `ps.chisq_goodness_of_fit` (Rust)
+- Extensible `Alert.details` dict for structured metadata (column_b, method, p_value)
+- Alert HTML rendering: color-coded badges per type, HIGH_CORRELATION shows both columns
+
+### Changed
+
+- Correlation threshold default: 0.9 → 0.8
+- Pipeline order: correlations computed before alerts (alerts now receive correlation results)
+
+### Dependencies
+
+- Added `scipy>=1.12` (Kendall tau-b C implementation)
+- Added `phik>=0.12` (Phi K scalar conversion)
+
 ## [0.1.0] - 2026-03-23
 
 ### Added
@@ -21,4 +45,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - CSV and Parquet file path ingestion
 - PEP 561 `py.typed` marker
 
+[0.2.0]: https://github.com/dataxid/dataxid-profiling/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/dataxid/dataxid-profiling/releases/tag/v0.1.0
