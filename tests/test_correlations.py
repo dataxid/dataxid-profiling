@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pandas as pd
 import polars as pl
 import pytest
 from scipy.stats import kendalltau
@@ -253,15 +254,129 @@ class TestKendallBasic:
         assert math.isnan(rows["a"]["c"])
 
 
+class TestCramersVBasic:
+    @pytest.fixture()
+    def cat_df(self) -> pl.DataFrame:
+        return pl.DataFrame({
+            "color": ["red", "blue", "red", "green", "blue"] * 20,
+            "shape": ["circle", "square", "circle", "triangle", "square"] * 20,
+            "size": ["S", "M", "L", "S", "M"] * 20,
+        })
+
+    def test_returns_cramers_v_key(self, cat_df: pl.DataFrame):
+        result = _corr(cat_df)
+        assert "cramers_v" in result
+        assert isinstance(result["cramers_v"], CorrelationResult)
+
+    def test_matrix_shape(self, cat_df: pl.DataFrame):
+        matrix = _corr(cat_df)["cramers_v"].matrix
+        assert matrix.height == 3
+        assert matrix.width == 3 + 1
+
+    def test_diagonal_is_one(self, cat_df: pl.DataFrame):
+        matrix = _corr(cat_df)["cramers_v"].matrix
+        for row in matrix.iter_rows(named=True):
+            assert row[row["column"]] == pytest.approx(1.0)
+
+    def test_symmetric(self, cat_df: pl.DataFrame):
+        matrix = _corr(cat_df)["cramers_v"].matrix
+        rows = {r["column"]: r for r in matrix.iter_rows(named=True)}
+        cols = [c for c in matrix.columns if c != "column"]
+        for a in cols:
+            for b in cols:
+                assert rows[a][b] == pytest.approx(rows[b][a], abs=1e-10)
+
+    def test_values_in_range(self, cat_df: pl.DataFrame):
+        matrix = _corr(cat_df)["cramers_v"].matrix
+        for row in matrix.iter_rows(named=True):
+            for col in matrix.columns:
+                if col == "column":
+                    continue
+                assert 0.0 <= row[col] <= 1.0
+
+    def test_no_pvalues(self, cat_df: pl.DataFrame):
+        result = _corr(cat_df)["cramers_v"]
+        assert result.pvalues is None
+
+    def test_perfect_association(self):
+        """Identical columns → V = 1.0."""
+        df = pl.DataFrame({
+            "a": ["x", "y", "z"] * 10,
+            "b": ["x", "y", "z"] * 10,
+        })
+        matrix = _corr(df)["cramers_v"].matrix
+        rows = {r["column"]: r for r in matrix.iter_rows(named=True)}
+        assert rows["a"]["b"] == pytest.approx(1.0)
+
+    def test_no_association(self):
+        """Independent columns → V ≈ 0."""
+        import random
+        random.seed(42)
+        a = [random.choice(["x", "y", "z"]) for _ in range(1000)]
+        b = [random.choice(["p", "q", "r"]) for _ in range(1000)]
+        df = pl.DataFrame({"a": a, "b": b})
+        matrix = _corr(df)["cramers_v"].matrix
+        rows = {r["column"]: r for r in matrix.iter_rows(named=True)}
+        assert rows["a"]["b"] < 0.1
+
+    def test_columns_sorted(self, cat_df: pl.DataFrame):
+        matrix = _corr(cat_df)["cramers_v"].matrix
+        col_labels = matrix["column"].to_list()
+        assert col_labels == sorted(col_labels)
+
+    def test_single_categorical_column_skips(self):
+        df = pl.DataFrame({"a": [1, 2, 3], "cat": ["x", "y", "z"]})
+        result = _corr(df)
+        assert "cramers_v" not in result
+
+    def test_mixed_df_cramers_only_categorical(self):
+        df = pl.DataFrame({
+            "num1": [1, 2, 3, 4, 5],
+            "num2": [5, 4, 3, 2, 1],
+            "cat1": ["a", "b", "a", "b", "a"],
+            "cat2": ["x", "y", "x", "y", "x"],
+        })
+        result = _corr(df)
+        assert "pearson" in result
+        assert "cramers_v" in result
+        cv_cols = result["cramers_v"].matrix["column"].to_list()
+        assert "num1" not in cv_cols
+        assert "cat1" in cv_cols
+
+    def test_matches_scipy_reference(self):
+        """Our Cramér's V must match scipy chi2_contingency calculation."""
+        import numpy as np
+        from scipy.stats import chi2_contingency
+
+        df = pl.DataFrame({
+            "a": ["x", "x", "y", "y", "z", "z"] * 10,
+            "b": ["p", "q", "p", "r", "q", "r"] * 10,
+        })
+        our_v = _corr(df)["cramers_v"].matrix
+        rows = {r["column"]: r for r in our_v.iter_rows(named=True)}
+
+        ct = pd.crosstab(
+            pd.Series(df["a"].to_list()),
+            pd.Series(df["b"].to_list()),
+        )
+        chi2, _, _, _ = chi2_contingency(ct)
+        n_obs = ct.values.sum()
+        min_dim = min(ct.shape) - 1
+        expected_v = np.sqrt(chi2 / (n_obs * min_dim))
+
+        assert rows["a"]["b"] == pytest.approx(expected_v, abs=1e-4)
+
+
 class TestCorrelationEdgeCases:
     def test_single_numeric_column(self):
         df = pl.DataFrame({"a": [1, 2, 3], "city": ["x", "y", "z"]})
         result = _corr(df)
         assert result == {}
 
-    def test_no_numeric_columns(self, categorical_df: pl.DataFrame):
+    def test_no_numeric_columns_has_cramers_v(self, categorical_df: pl.DataFrame):
         result = _corr(categorical_df)
-        assert result == {}
+        assert "pearson" not in result
+        assert "cramers_v" in result
 
     def test_overview_mode_skips(self, numeric_df: pl.DataFrame):
         config = ProfileConfig(mode="overview")

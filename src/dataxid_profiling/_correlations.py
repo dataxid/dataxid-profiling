@@ -3,6 +3,7 @@
 Pearson and Spearman use polars-statistics (Rust plugin).
 Kendall tau-b uses scipy's battle-tested C merge-sort — O(n log n)
 vs the O(n²) naive pairwise approach.
+Cramér's V uses Polars group_by for contingency tables + ps.cramers_v (Rust).
 """
 
 from __future__ import annotations
@@ -47,16 +48,22 @@ def compute_correlations(
     numeric_cols = sorted(
         col for col, ct in column_types.items() if ct is ColumnType.NUMERIC
     )
+    categorical_cols = sorted(
+        col for col, ct in column_types.items() if ct is ColumnType.CATEGORICAL
+    )
 
-    if len(numeric_cols) < 2:
-        return {}
+    result: dict[str, CorrelationResult] = {}
 
-    df_f64 = _ensure_f64(df, numeric_cols)
-    return {
-        "pearson": _build_matrix(df_f64, numeric_cols, _pearson_pair),
-        "spearman": _build_matrix(df_f64, numeric_cols, _spearman_pair),
-        "kendall": _build_matrix(df_f64, numeric_cols, _kendall_pair),
-    }
+    if len(numeric_cols) >= 2:
+        df_f64 = _ensure_f64(df, numeric_cols)
+        result["pearson"] = _build_matrix(df_f64, numeric_cols, _pearson_pair)
+        result["spearman"] = _build_matrix(df_f64, numeric_cols, _spearman_pair)
+        result["kendall"] = _build_matrix(df_f64, numeric_cols, _kendall_pair)
+
+    if len(categorical_cols) >= 2:
+        result["cramers_v"] = _build_matrix(df, categorical_cols, _cramers_v_pair)
+
+    return result
 
 
 def _build_matrix(
@@ -149,3 +156,42 @@ def _kendall_pair(
         return 0.0, 1.0
     tau, pval = kendalltau(valid[col_a].to_numpy(), valid[col_b].to_numpy())
     return float(tau), float(pval)
+
+
+def _build_contingency_flat(
+    df: pl.DataFrame, col_a: str, col_b: str
+) -> tuple[list[int], int, int]:
+    """Build a flattened contingency table (row-major) via Polars group_by + pivot."""
+    ct = (
+        df.select(col_a, col_b)
+        .drop_nulls()
+        .group_by(col_a, col_b)
+        .len()
+        .pivot(on=col_b, index=col_a, values="len")
+        .fill_null(0)
+    )
+    row_labels = ct.sort(col_a)[col_a].to_list()
+    value_cols = sorted(c for c in ct.columns if c != col_a)
+    nr, nc = len(row_labels), len(value_cols)
+    flat: list[int] = []
+    for row in ct.sort(col_a).iter_rows(named=True):
+        for vc in value_cols:
+            flat.append(int(row[vc]))
+    return flat, nr, nc
+
+
+def _cramers_v_pair(
+    df: pl.DataFrame, col_a: str, col_b: str
+) -> tuple[float, float | None]:
+    """Cramér's V via Polars contingency table + ps.cramers_v (Rust)."""
+    flat, nr, nc = _build_contingency_flat(df, col_a, col_b)
+    if nr < 2 or nc < 2:
+        return float("nan"), None
+    ct_df = pl.DataFrame({"ct": flat})
+    try:
+        result = ct_df.select(ps.cramers_v("ct", n_rows=nr, n_cols=nc))
+    except pl.exceptions.ComputeError:
+        return float("nan"), None
+    row = result.unnest(result.columns[0]).row(0, named=True)
+    v = float(row["estimate"]) if row["estimate"] is not None else 0.0
+    return v, None

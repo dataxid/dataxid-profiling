@@ -159,10 +159,29 @@ class TestProfileReportCorrelations:
         report = ProfileReport(mixed_df, mode="overview")
         assert report.correlations == {}
 
+    def test_cramers_v_with_categoricals(self):
+        df = pl.DataFrame({
+            "a": ["x", "y", "z"] * 10,
+            "b": ["p", "q", "r"] * 10,
+        })
+        report = ProfileReport(df)
+        assert "cramers_v" in report.correlations
+
+    def test_cramers_v_in_to_dict(self):
+        df = pl.DataFrame({
+            "a": ["x", "y", "z"] * 10,
+            "b": ["p", "q", "r"] * 10,
+        })
+        report = ProfileReport(df)
+        d = report.to_dict()
+        assert "cramers_v" in d["correlations"]
+        assert "matrix" in d["correlations"]["cramers_v"]
+
     def test_no_correlations_single_numeric(self):
         df = pl.DataFrame({"a": [1, 2, 3], "b": ["x", "y", "z"]})
         report = ProfileReport(df)
-        assert report.correlations == {}
+        assert "pearson" not in report.correlations
+        assert "cramers_v" not in report.correlations
 
 
 class TestProfileReportToHtml:

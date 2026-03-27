@@ -101,10 +101,33 @@ class TestRenderCorrelations:
         assert 'class="corr-panel p-6"' in html
         assert 'class="corr-panel p-6 hidden"' in html
 
+    def test_cramers_v_tab(self, categorical_df: pl.DataFrame):
+        html = _render(categorical_df)
+        assert "corr_cramers_v" in html
+        assert "Cramers V" in html
+        assert "panel-corr_cramers_v" in html
+
+    def test_categorical_only_no_numeric_tabs(self, categorical_df: pl.DataFrame):
+        html = _render(categorical_df)
+        assert "corr_pearson" not in html
+        assert "corr_cramers_v" in html
+
+    def test_mixed_has_both_tabs(self):
+        df = pl.DataFrame({
+            "n1": [1, 2, 3, 4, 5],
+            "n2": [5, 4, 3, 2, 1],
+            "c1": ["a", "b", "a", "b", "a"],
+            "c2": ["x", "y", "x", "y", "x"],
+        })
+        html = _render(df)
+        assert "corr_pearson" in html
+        assert "corr_cramers_v" in html
+
     def test_no_correlation_single_numeric(self):
         df = pl.DataFrame({"a": [1, 2, 3], "b": ["x", "y", "z"]})
         html = _render(df)
         assert "corr_pearson" not in html
+        assert "corr_cramers_v" not in html
         assert 'id="corr-tabs"' not in html
 
     def test_no_correlation_overview_mode(self, numeric_df: pl.DataFrame):
