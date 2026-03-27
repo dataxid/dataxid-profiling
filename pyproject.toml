@@ -1,6 +1,6 @@
 [project]
 name = "dataxid-profiling"
-version = "0.1.0"
+version = "0.2.0"
 description = "Fast, Polars-native data profiling with interactive HTML reports and data quality alerts."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -37,6 +37,9 @@ classifiers = [
 dependencies = [
     "polars>=1.0",
     "jinja2>=3.1",
+    "polars-statistics>=0.4",
+    "scipy>=1.12",
+    "phik>=0.12",
 ]
 
 [project.urls]

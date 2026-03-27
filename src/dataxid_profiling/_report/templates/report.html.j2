@@ -136,6 +136,10 @@
               <td class="px-5 py-3">
                 {% if alert.column %}
                 <span class="font-mono text-sm text-brand-teal font-medium">{{ alert.column }}</span>
+                {% if alert.details and alert.details.column_b %}
+                <span class="text-gray-400 mx-1">↔</span>
+                <span class="font-mono text-sm text-brand-teal font-medium">{{ alert.details.column_b }}</span>
+                {% endif %}
                 {% else %}
                 <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-500 italic">dataset</span>
                 {% endif %}
@@ -145,6 +149,8 @@
                   {% if alert.alert_type in ('HIGH_MISSING', 'DUPLICATES') %}bg-red-50 text-red-600 ring-1 ring-red-200
                   {% elif alert.alert_type in ('SKEWED', 'HIGH_ZEROS') %}bg-amber-50 text-amber-600 ring-1 ring-amber-200
                   {% elif alert.alert_type in ('IMBALANCED', 'CONSTANT') %}bg-purple-50 text-purple-600 ring-1 ring-purple-200
+                  {% elif alert.alert_type == 'HIGH_CORRELATION' %}bg-blue-50 text-blue-600 ring-1 ring-blue-200
+                  {% elif alert.alert_type == 'UNIFORM' %}bg-teal-50 text-teal-600 ring-1 ring-teal-200
                   {% else %}bg-orange-50 text-orange-600 ring-1 ring-orange-200{% endif %}">
                   {{ alert.alert_type }}
                 </span>
@@ -293,14 +299,24 @@
     </section>
 
     {# ── Correlations ── #}
-    {% if correlation_chart %}
+    {% if correlation_charts %}
     <section>
       <h2 class="text-lg font-semibold text-brand-teal mb-4 flex items-center gap-2">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
         Correlations
       </h2>
-      <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-        {{ correlation_chart | safe }}
+      <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div class="flex gap-2 px-6 pt-4" id="corr-tabs">
+          {% for chart in correlation_charts %}
+          <button class="tab-btn px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white text-gray-600 hover:border-brand-teal hover:text-brand-teal{% if loop.first %} active{% endif %}"
+                  onclick="switchCorrTab('{{ chart.div_id }}', this)">{{ chart.name }}</button>
+          {% endfor %}
+        </div>
+        {% for chart in correlation_charts %}
+        <div class="corr-panel p-6{% if not loop.first %} hidden{% endif %}" id="panel-{{ chart.div_id }}">
+          {{ chart.chart_html | safe }}
+        </div>
+        {% endfor %}
       </div>
     </section>
     {% endif %}
@@ -483,6 +499,17 @@
         var chart = echarts.getInstanceByDom(el);
         if (chart) chart.resize();
       });
+    }
+    function switchCorrTab(divId, btn) {
+      document.querySelectorAll('#corr-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.corr-panel').forEach(p => p.classList.add('hidden'));
+      btn.classList.add('active');
+      var panel = document.getElementById('panel-' + divId);
+      if (panel) {
+        panel.classList.remove('hidden');
+        var el = document.getElementById(divId);
+        if (el) { var c = echarts.getInstanceByDom(el); if (c) c.resize(); }
+      }
     }
     function switchSampleTab(which, btn) {
       btn.parentElement.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));

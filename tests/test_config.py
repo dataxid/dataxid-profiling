@@ -14,7 +14,7 @@ class TestProfileConfigDefaults:
         cfg = ProfileConfig()
         assert cfg.missing_threshold == 0.05
         assert cfg.cardinality_threshold == 0.95
-        assert cfg.correlation_threshold == 0.9
+        assert cfg.correlation_threshold == 0.8
         assert cfg.text_unique_ratio == 0.5
 
     def test_default_mode_complete(self):

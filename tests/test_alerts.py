@@ -6,6 +6,7 @@ import pytest
 from dataxid_profiling._alerts import Alert, AlertType, check_quality
 from dataxid_profiling._analyzers import analyze
 from dataxid_profiling._config import ProfileConfig
+from dataxid_profiling._correlations import compute_correlations
 from dataxid_profiling._dataset_overview import compute_overview
 from dataxid_profiling._type_inference import infer_types
 
@@ -17,7 +18,8 @@ def _get_alerts(
     column_types = infer_types(df, config)
     column_stats = analyze(df, column_types, config)
     overview = compute_overview(df, column_types, config)
-    return check_quality(column_stats, overview, config)
+    correlations = compute_correlations(df, column_types, config)
+    return check_quality(column_stats, overview, config, correlations)
 
 
 def _alert_types(alerts: list[Alert]) -> set[AlertType]:
@@ -146,6 +148,90 @@ class TestImbalanced:
         assert any(a.alert_type == AlertType.IMBALANCED for a in col_alerts)
 
 
+class TestHighCorrelation:
+    def test_triggers_on_correlated_pair(self):
+        n = 50
+        x = list(range(n))
+        df = pl.DataFrame({"a": x, "b": [v * 2 + 1 for v in x]})
+        alerts = _get_alerts(df, ProfileConfig(correlation_threshold=0.8))
+        corr_alerts = [a for a in alerts if a.alert_type == AlertType.HIGH_CORRELATION]
+        assert len(corr_alerts) >= 1
+        alert = corr_alerts[0]
+        assert alert.value > 0.8
+        assert "column_b" in alert.details
+        assert "method" in alert.details
+
+    def test_no_alert_below_threshold(self):
+        import random
+        random.seed(42)
+        df = pl.DataFrame({"a": list(range(50)), "b": [random.random() for _ in range(50)]})
+        alerts = _get_alerts(df, ProfileConfig(correlation_threshold=0.9))
+        corr_alerts = [a for a in alerts if a.alert_type == AlertType.HIGH_CORRELATION]
+        assert len(corr_alerts) == 0
+
+    def test_details_has_method(self):
+        n = 50
+        x = list(range(n))
+        df = pl.DataFrame({"a": x, "b": [v * 3 for v in x]})
+        alerts = _get_alerts(df, ProfileConfig(correlation_threshold=0.5))
+        corr_alerts = [a for a in alerts if a.alert_type == AlertType.HIGH_CORRELATION]
+        assert len(corr_alerts) >= 1
+        assert corr_alerts[0].details["method"] in ("phik", "pearson")
+
+    def test_no_duplicate_pairs(self):
+        n = 50
+        x = list(range(n))
+        df = pl.DataFrame({"a": x, "b": [v * 2 for v in x], "c": [v * 3 for v in x]})
+        alerts = _get_alerts(df, ProfileConfig(correlation_threshold=0.5))
+        corr_alerts = [a for a in alerts if a.alert_type == AlertType.HIGH_CORRELATION]
+        pairs = {tuple(sorted((a.column, a.details["column_b"]))) for a in corr_alerts}
+        assert len(pairs) == len(corr_alerts)
+
+    def test_single_column_no_alert(self):
+        df = pl.DataFrame({"a": list(range(10))})
+        alerts = _get_alerts(df)
+        corr_alerts = [a for a in alerts if a.alert_type == AlertType.HIGH_CORRELATION]
+        assert len(corr_alerts) == 0
+
+
+class TestUniform:
+    def test_triggers_on_uniform_distribution(self):
+        df = pl.DataFrame({"cat": ["A", "B", "C", "D"] * 25})
+        alerts = _get_alerts(df, ProfileConfig(
+            uniform_pvalue_threshold=0.05, text_unique_ratio=1.0
+        ))
+        uniform_alerts = [a for a in alerts if a.alert_type == AlertType.UNIFORM]
+        assert len(uniform_alerts) == 1
+        assert uniform_alerts[0].column == "cat"
+        assert uniform_alerts[0].details["test"] == "chi2_gof"
+        assert uniform_alerts[0].details["p_value"] > 0.05
+
+    def test_no_alert_on_skewed_distribution(self):
+        df = pl.DataFrame({"cat": ["A"] * 90 + ["B"] * 5 + ["C"] * 5})
+        alerts = _get_alerts(df, ProfileConfig(
+            uniform_pvalue_threshold=0.05, text_unique_ratio=1.0,
+            imbalance_threshold=1.0,
+        ))
+        uniform_alerts = [a for a in alerts if a.alert_type == AlertType.UNIFORM]
+        assert len(uniform_alerts) == 0
+
+    def test_details_contains_p_value(self):
+        df = pl.DataFrame({"cat": ["X", "Y", "Z"] * 30})
+        alerts = _get_alerts(df, ProfileConfig(
+            uniform_pvalue_threshold=0.05, text_unique_ratio=1.0
+        ))
+        uniform_alerts = [a for a in alerts if a.alert_type == AlertType.UNIFORM]
+        assert len(uniform_alerts) == 1
+        assert "p_value" in uniform_alerts[0].details
+        assert isinstance(uniform_alerts[0].details["p_value"], float)
+
+    def test_single_category_no_alert(self):
+        df = pl.DataFrame({"cat": ["A"] * 20})
+        alerts = _get_alerts(df)
+        uniform_alerts = [a for a in alerts if a.alert_type == AlertType.UNIFORM]
+        assert len(uniform_alerts) == 0
+
+
 class TestCleanData:
     def test_no_alerts_on_clean_data(self):
         df = pl.DataFrame({
@@ -154,6 +240,8 @@ class TestCleanData:
             "active": [True, False, True, False, True, False, True, False, True, False],
         })
         alerts = _get_alerts(df)
-        # duplicate rows exist but that's expected — only column-level alerts checked
-        col_alerts = [a for a in alerts if a.column is not None]
+        col_alerts = [
+            a for a in alerts
+            if a.column is not None and a.alert_type != AlertType.UNIFORM
+        ]
         assert len(col_alerts) == 0

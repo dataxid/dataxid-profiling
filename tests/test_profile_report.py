@@ -109,6 +109,19 @@ class TestProfileReportToDict:
             assert "alert_type" in alert
             assert isinstance(alert["alert_type"], str)
             assert "value" in alert
+            assert "details" in alert
+            assert isinstance(alert["details"], dict)
+
+    def test_to_dict_high_correlation_details(self):
+        n = 50
+        x = list(range(n))
+        df = pl.DataFrame({"a": x, "b": [v * 2 + 1 for v in x]})
+        report = ProfileReport(df, correlation_threshold=0.5)
+        d = report.to_dict()
+        corr_alerts = [a for a in d["alerts"] if a["alert_type"] == "HIGH_CORRELATION"]
+        assert len(corr_alerts) >= 1
+        assert "column_b" in corr_alerts[0]["details"]
+        assert "method" in corr_alerts[0]["details"]
 
 
 class TestProfileReportToJson:
@@ -145,21 +158,63 @@ class TestProfileReportCorrelations:
         report = ProfileReport(mixed_df)
         assert isinstance(report.correlations, dict)
         assert "pearson" in report.correlations
+        assert "spearman" in report.correlations
+        assert "kendall" in report.correlations
 
     def test_correlations_in_to_dict(self, mixed_df: pl.DataFrame):
         report = ProfileReport(mixed_df)
         d = report.to_dict()
         assert "correlations" in d
         assert "pearson" in d["correlations"]
+        assert "matrix" in d["correlations"]["pearson"]
 
     def test_no_correlations_overview(self, mixed_df: pl.DataFrame):
         report = ProfileReport(mixed_df, mode="overview")
         assert report.correlations == {}
 
+    def test_cramers_v_with_categoricals(self):
+        df = pl.DataFrame({
+            "a": ["x", "y", "z"] * 10,
+            "b": ["p", "q", "r"] * 10,
+        })
+        report = ProfileReport(df)
+        assert "cramers_v" in report.correlations
+
+    def test_cramers_v_in_to_dict(self):
+        df = pl.DataFrame({
+            "a": ["x", "y", "z"] * 10,
+            "b": ["p", "q", "r"] * 10,
+        })
+        report = ProfileReport(df)
+        d = report.to_dict()
+        assert "cramers_v" in d["correlations"]
+        assert "matrix" in d["correlations"]["cramers_v"]
+
+    def test_phik_with_mixed_columns(self):
+        df = pl.DataFrame({
+            "n1": list(range(20)),
+            "n2": list(range(20, 40)),
+            "c1": ["a", "b"] * 10,
+            "c2": ["x", "y"] * 10,
+        })
+        report = ProfileReport(df)
+        assert "phik" in report.correlations
+
+    def test_phik_in_to_dict(self):
+        df = pl.DataFrame({
+            "n1": list(range(20)),
+            "c1": ["a", "b"] * 10,
+        })
+        report = ProfileReport(df)
+        d = report.to_dict()
+        assert "phik" in d["correlations"]
+        assert "matrix" in d["correlations"]["phik"]
+
     def test_no_correlations_single_numeric(self):
         df = pl.DataFrame({"a": [1, 2, 3], "b": ["x", "y", "z"]})
         report = ProfileReport(df)
-        assert report.correlations == {}
+        assert "pearson" not in report.correlations
+        assert "cramers_v" not in report.correlations
 
 
 class TestProfileReportToHtml:
@@ -197,12 +252,14 @@ class TestProfileReportToHtml:
     def test_to_html_contains_correlations(self, mixed_df: pl.DataFrame):
         report = ProfileReport(mixed_df)
         html = report.to_html()
-        assert "corr_heatmap" in html
+        assert "corr_pearson" in html
+        assert "corr_spearman" in html
+        assert "corr_kendall" in html
 
     def test_to_html_no_correlation_overview(self, mixed_df: pl.DataFrame):
         report = ProfileReport(mixed_df, mode="overview")
         html = report.to_html()
-        assert "corr_heatmap" not in html
+        assert "corr_pearson" not in html
 
 
 class TestProfileReportEdgeCases:

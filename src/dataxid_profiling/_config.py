@@ -18,12 +18,13 @@ class ProfileConfig:
     # Alert thresholds
     missing_threshold: float = 0.05  # > 5% missing → HIGH_MISSING alert
     cardinality_threshold: float = 0.95  # unique/count > 95% → HIGH_CARDINALITY alert
-    correlation_threshold: float = 0.9  # |corr| > 0.9 → HIGH_CORRELATION alert
+    correlation_threshold: float = 0.8  # |corr| > 0.8 → HIGH_CORRELATION alert
     constant_threshold: int = 1  # n_unique <= 1 → CONSTANT alert
     zero_threshold: float = 0.05  # > 5% zeros → HIGH_ZEROS alert
     skewness_threshold: float = 2.0  # |skewness| > 2 → SKEWED alert
     imbalance_threshold: float = 0.9  # top_value_pct > 90% → IMBALANCED alert
     duplicate_threshold: float = 0.0  # any duplicate → DUPLICATES alert
+    uniform_pvalue_threshold: float = 0.05  # p > 0.05 → UNIFORM alert (can't reject uniform H0)
 
     # Display
     n_top_values: int = 5  # value_counts'ta gösterilecek top N
