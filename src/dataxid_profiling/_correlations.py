@@ -59,6 +59,12 @@ def compute_correlations(
     )
 
     result: dict[str, CorrelationResult] = {}
+    all_cols = sorted(numeric_cols + categorical_cols)
+
+    if len(all_cols) >= 2:
+        numeric_set = frozenset(numeric_cols)
+        phik_fn = _make_phik_pair(numeric_set)
+        result["phik"] = _build_matrix(df, all_cols, phik_fn)
 
     if len(numeric_cols) >= 2:
         df_f64 = _ensure_f64(df, numeric_cols)
@@ -68,12 +74,6 @@ def compute_correlations(
 
     if len(categorical_cols) >= 2:
         result["cramers_v"] = _build_matrix(df, categorical_cols, _cramers_v_pair)
-
-    all_cols = sorted(numeric_cols + categorical_cols)
-    if len(all_cols) >= 2:
-        numeric_set = frozenset(numeric_cols)
-        phik_fn = _make_phik_pair(numeric_set)
-        result["phik"] = _build_matrix(df, all_cols, phik_fn)
 
     return result
 
