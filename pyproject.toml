@@ -38,6 +38,7 @@ dependencies = [
     "polars>=1.0",
     "jinja2>=3.1",
     "polars-statistics>=0.4",
+    "scipy>=1.12",
 ]
 
 [project.urls]

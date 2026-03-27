@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import polars as pl
 import pytest
+from scipy.stats import kendalltau
 
 from dataxid_profiling._config import ProfileConfig
 from dataxid_profiling._correlations import CorrelationResult, compute_correlations
@@ -154,6 +155,102 @@ class TestSpearmanBasic:
         matrix = _corr(numeric_df)["spearman"].matrix
         col_labels = matrix["column"].to_list()
         assert col_labels == sorted(col_labels)
+
+
+class TestKendallBasic:
+    def test_returns_kendall_key(self, numeric_df: pl.DataFrame):
+        result = _corr(numeric_df)
+        assert "kendall" in result
+        assert isinstance(result["kendall"], CorrelationResult)
+
+    def test_matrix_shape(self, numeric_df: pl.DataFrame):
+        matrix = _corr(numeric_df)["kendall"].matrix
+        n_numeric = 3
+        assert matrix.height == n_numeric
+        assert matrix.width == n_numeric + 1
+
+    def test_diagonal_is_one(self, numeric_df: pl.DataFrame):
+        matrix = _corr(numeric_df)["kendall"].matrix
+        for row in matrix.iter_rows(named=True):
+            assert row[row["column"]] == pytest.approx(1.0)
+
+    def test_symmetric(self, numeric_df: pl.DataFrame):
+        matrix = _corr(numeric_df)["kendall"].matrix
+        rows = {r["column"]: r for r in matrix.iter_rows(named=True)}
+        cols = [c for c in matrix.columns if c != "column"]
+        for a in cols:
+            for b in cols:
+                assert rows[a][b] == pytest.approx(rows[b][a], abs=1e-10)
+
+    def test_values_in_range(self, numeric_df: pl.DataFrame):
+        matrix = _corr(numeric_df)["kendall"].matrix
+        for row in matrix.iter_rows(named=True):
+            for col in matrix.columns:
+                if col == "column":
+                    continue
+                assert -1.0 <= row[col] <= 1.0
+
+    def test_perfect_concordance(self):
+        df = pl.DataFrame({"a": [1, 2, 3, 4, 5], "b": [2, 4, 6, 8, 10]})
+        matrix = _corr(df)["kendall"].matrix
+        rows = {r["column"]: r for r in matrix.iter_rows(named=True)}
+        assert rows["a"]["b"] == pytest.approx(1.0)
+
+    def test_perfect_discordance(self):
+        df = pl.DataFrame({"a": [1, 2, 3, 4, 5], "b": [10, 8, 6, 4, 2]})
+        matrix = _corr(df)["kendall"].matrix
+        rows = {r["column"]: r for r in matrix.iter_rows(named=True)}
+        assert rows["a"]["b"] == pytest.approx(-1.0)
+
+    def test_with_ties(self):
+        """Kendall tau-b handles tied values correctly."""
+        df = pl.DataFrame({"a": [1, 2, 2, 3, 4], "b": [1, 2, 2, 3, 5]})
+        matrix = _corr(df)["kendall"].matrix
+        rows = {r["column"]: r for r in matrix.iter_rows(named=True)}
+        assert 0.0 < rows["a"]["b"] <= 1.0
+
+    def test_pvalues_present(self, numeric_df: pl.DataFrame):
+        result = _corr(numeric_df)["kendall"]
+        assert result.pvalues is not None
+        assert result.pvalues.height == result.matrix.height
+        for row in result.pvalues.iter_rows(named=True):
+            for col in result.pvalues.columns:
+                if col == "column":
+                    continue
+                assert 0.0 <= row[col] <= 1.0
+
+    def test_columns_sorted(self, numeric_df: pl.DataFrame):
+        matrix = _corr(numeric_df)["kendall"].matrix
+        col_labels = matrix["column"].to_list()
+        assert col_labels == sorted(col_labels)
+
+    def test_matches_scipy_reference(self):
+        """Our matrix values must match scipy.stats.kendalltau directly."""
+        df = pl.DataFrame({"a": [1, 2, 2, 3, 4], "b": [1, 3, 2, 4, 5]})
+        matrix = _corr(df)["kendall"].matrix
+        rows = {r["column"]: r for r in matrix.iter_rows(named=True)}
+        expected_tau, _ = kendalltau(df["a"].to_list(), df["b"].to_list())
+        assert rows["a"]["b"] == pytest.approx(expected_tau, abs=1e-10)
+
+    def test_perfect_concordance_pvalue_near_zero(self):
+        df = pl.DataFrame({"a": list(range(20)), "b": list(range(20))})
+        result = _corr(df)["kendall"]
+        rows = {r["column"]: r for r in result.pvalues.iter_rows(named=True)}
+        assert rows["a"]["b"] == pytest.approx(0.0, abs=1e-6)
+
+    def test_constant_column_nan(self):
+        """Kendall of a constant vs variable should be NaN (zero variance)."""
+        import math
+
+        df = pl.DataFrame({
+            "a": [1, 1, 1, 1, 1],
+            "b": [1, 2, 3, 4, 5],
+            "c": [5, 4, 3, 2, 1],
+        })
+        result = _corr(df)["kendall"]
+        rows = {r["column"]: r for r in result.matrix.iter_rows(named=True)}
+        assert math.isnan(rows["a"]["b"])
+        assert math.isnan(rows["a"]["c"])
 
 
 class TestCorrelationEdgeCases:

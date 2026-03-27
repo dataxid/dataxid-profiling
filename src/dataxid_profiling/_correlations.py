@@ -1,4 +1,9 @@
-"""Correlation matrices — Polars-native, powered by polars-statistics."""
+"""Correlation matrices — Polars-native.
+
+Pearson and Spearman use polars-statistics (Rust plugin).
+Kendall tau-b uses scipy's battle-tested C merge-sort — O(n log n)
+vs the O(n²) naive pairwise approach.
+"""
 
 from __future__ import annotations
 
@@ -8,6 +13,7 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 import polars_statistics as ps
+from scipy.stats import kendalltau
 
 from dataxid_profiling._type_inference import ColumnType
 
@@ -49,6 +55,7 @@ def compute_correlations(
     return {
         "pearson": _build_matrix(df_f64, numeric_cols, _pearson_pair),
         "spearman": _build_matrix(df_f64, numeric_cols, _spearman_pair),
+        "kendall": _build_matrix(df_f64, numeric_cols, _kendall_pair),
     }
 
 
@@ -105,8 +112,16 @@ def _ensure_f64(df: pl.DataFrame, columns: list[str]) -> pl.DataFrame:
 
 
 def _extract_corr(df: pl.DataFrame, expr: pl.Expr) -> tuple[float, float]:
-    """Extract (estimate, p_value) from a polars-statistics struct result."""
-    result = df.select(expr)
+    """Extract (estimate, p_value) from a polars-statistics struct result.
+
+    Zero-variance columns make correlation mathematically undefined (0/0);
+    polars-statistics panics instead of returning NaN — we catch that and
+    return the correct (NaN, NaN).
+    """
+    try:
+        result = df.select(expr)
+    except pl.exceptions.ComputeError:
+        return float("nan"), float("nan")
     row = result.unnest(result.columns[0]).row(0, named=True)
     est = float(row["estimate"]) if row["estimate"] is not None else 0.0
     pval = float(row["p_value"]) if row["p_value"] is not None else 1.0
@@ -123,3 +138,14 @@ def _spearman_pair(
     df: pl.DataFrame, col_a: str, col_b: str
 ) -> tuple[float, float | None]:
     return _extract_corr(df, ps.spearman(col_a, col_b))
+
+
+def _kendall_pair(
+    df: pl.DataFrame, col_a: str, col_b: str
+) -> tuple[float, float | None]:
+    """Kendall tau-b via scipy — O(n log n) C merge-sort, not ps.kendall O(n²)."""
+    valid = df.select(col_a, col_b).drop_nulls()
+    if valid.height < 2:
+        return 0.0, 1.0
+    tau, pval = kendalltau(valid[col_a].to_numpy(), valid[col_b].to_numpy())
+    return float(tau), float(pval)

@@ -146,6 +146,7 @@ class TestProfileReportCorrelations:
         assert isinstance(report.correlations, dict)
         assert "pearson" in report.correlations
         assert "spearman" in report.correlations
+        assert "kendall" in report.correlations
 
     def test_correlations_in_to_dict(self, mixed_df: pl.DataFrame):
         report = ProfileReport(mixed_df)
@@ -201,6 +202,7 @@ class TestProfileReportToHtml:
         html = report.to_html()
         assert "corr_pearson" in html
         assert "corr_spearman" in html
+        assert "corr_kendall" in html
 
     def test_to_html_no_correlation_overview(self, mixed_df: pl.DataFrame):
         report = ProfileReport(mixed_df, mode="overview")

@@ -79,19 +79,22 @@ class TestRenderCorrelations:
         assert "Correlations" in html
         assert "corr_pearson" in html
         assert "corr_spearman" in html
+        assert "corr_kendall" in html
         assert "heatmap" in html
 
     def test_tab_buttons(self, numeric_df: pl.DataFrame):
         html = _render(numeric_df)
-        assert "corr-tabs" in html
+        assert 'id="corr-tabs"' in html
         assert "Pearson" in html
         assert "Spearman" in html
+        assert "Kendall" in html
         assert "switchCorrTab" in html
 
     def test_tab_panels(self, numeric_df: pl.DataFrame):
         html = _render(numeric_df)
         assert "panel-corr_pearson" in html
         assert "panel-corr_spearman" in html
+        assert "panel-corr_kendall" in html
 
     def test_first_tab_active(self, numeric_df: pl.DataFrame):
         html = _render(numeric_df)
