@@ -109,6 +109,19 @@ class TestProfileReportToDict:
             assert "alert_type" in alert
             assert isinstance(alert["alert_type"], str)
             assert "value" in alert
+            assert "details" in alert
+            assert isinstance(alert["details"], dict)
+
+    def test_to_dict_high_correlation_details(self):
+        n = 50
+        x = list(range(n))
+        df = pl.DataFrame({"a": x, "b": [v * 2 + 1 for v in x]})
+        report = ProfileReport(df, correlation_threshold=0.5)
+        d = report.to_dict()
+        corr_alerts = [a for a in d["alerts"] if a["alert_type"] == "HIGH_CORRELATION"]
+        assert len(corr_alerts) >= 1
+        assert "column_b" in corr_alerts[0]["details"]
+        assert "method" in corr_alerts[0]["details"]
 
 
 class TestProfileReportToJson:

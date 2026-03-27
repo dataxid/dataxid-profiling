@@ -56,11 +56,11 @@ class ProfileReport:
         self._overview: DatasetOverview = compute_overview(
             self._df, self._column_types, self._config
         )
-        self._alerts: list[Alert] = check_quality(
-            self._column_stats, self._overview, self._config
-        )
         self._correlations: dict[str, CorrelationResult] = compute_correlations(
             self._df, self._column_types, self._config
+        )
+        self._alerts: list[Alert] = check_quality(
+            self._column_stats, self._overview, self._config, self._correlations
         )
 
     @property
@@ -108,6 +108,7 @@ class ProfileReport:
                     "column": a.column,
                     "alert_type": a.alert_type.name,
                     "value": a.value,
+                    "details": a.details,
                 }
                 for a in self._alerts
             ],

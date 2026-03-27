@@ -42,7 +42,12 @@ def render_html(
     correlation_charts = _prepare_correlation_charts(correlations, renderer)
     missing_bar_chart = _prepare_missing_bar_chart(overview, renderer)
     alert_dicts = [
-        {"column": a.column, "alert_type": a.alert_type.name, "value": a.value}
+        {
+            "column": a.column,
+            "alert_type": a.alert_type.name,
+            "value": a.value,
+            "details": a.details,
+        }
         for a in alerts
     ]
 

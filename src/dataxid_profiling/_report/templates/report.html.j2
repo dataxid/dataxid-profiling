@@ -136,6 +136,10 @@
               <td class="px-5 py-3">
                 {% if alert.column %}
                 <span class="font-mono text-sm text-brand-teal font-medium">{{ alert.column }}</span>
+                {% if alert.details and alert.details.column_b %}
+                <span class="text-gray-400 mx-1">↔</span>
+                <span class="font-mono text-sm text-brand-teal font-medium">{{ alert.details.column_b }}</span>
+                {% endif %}
                 {% else %}
                 <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-500 italic">dataset</span>
                 {% endif %}
@@ -145,6 +149,8 @@
                   {% if alert.alert_type in ('HIGH_MISSING', 'DUPLICATES') %}bg-red-50 text-red-600 ring-1 ring-red-200
                   {% elif alert.alert_type in ('SKEWED', 'HIGH_ZEROS') %}bg-amber-50 text-amber-600 ring-1 ring-amber-200
                   {% elif alert.alert_type in ('IMBALANCED', 'CONSTANT') %}bg-purple-50 text-purple-600 ring-1 ring-purple-200
+                  {% elif alert.alert_type == 'HIGH_CORRELATION' %}bg-blue-50 text-blue-600 ring-1 ring-blue-200
+                  {% elif alert.alert_type == 'UNIFORM' %}bg-teal-50 text-teal-600 ring-1 ring-teal-200
                   {% else %}bg-orange-50 text-orange-600 ring-1 ring-orange-200{% endif %}">
                   {{ alert.alert_type }}
                 </span>
