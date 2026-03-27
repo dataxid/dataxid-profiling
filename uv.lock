@@ -145,6 +145,7 @@ source = { editable = "." }
 dependencies = [
     { name = "jinja2" },
     { name = "polars" },
+    { name = "polars-statistics" },
 ]
 
 [package.dev-dependencies]
@@ -158,6 +159,7 @@ dev = [
 requires-dist = [
     { name = "jinja2", specifier = ">=3.1" },
     { name = "polars", specifier = ">=1.0" },
+    { name = "polars-statistics", specifier = ">=0.4" },
 ]
 
 [package.metadata.requires-dev]
@@ -329,6 +331,23 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/7a/3e/c86433c3b5ec0315bdfc7640d0c15d41f1216c0103a0eab9a9b5147d6c4c/polars_runtime_32-1.39.3-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:7c206bdcc7bc62ea038d6adea8e44b02f0e675e0191a54c810703b4895208ea4", size = 46485933, upload-time = "2026-03-20T11:14:51.155Z" },
     { url = "https://files.pythonhosted.org/packages/54/ce/200b310cf91f98e652eb6ea09fdb3a9718aa0293ebf113dce325797c8572/polars_runtime_32-1.39.3-cp310-abi3-win_amd64.whl", hash = "sha256:d66ca522517554a883446957539c40dc7b75eb0c2220357fb28bc8940d305339", size = 46995458, upload-time = "2026-03-20T11:14:56.074Z" },
     { url = "https://files.pythonhosted.org/packages/da/76/2d48927e0aa2abbdde08cbf4a2536883b73277d47fbeca95e952de86df34/polars_runtime_32-1.39.3-cp310-abi3-win_arm64.whl", hash = "sha256:f49f51461de63f13e5dd4eb080421c8f23f856945f3f8bd5b2b1f59da52c2860", size = 41857648, upload-time = "2026-03-20T11:15:01.142Z" },
+]
+
+[[package]]
+name = "polars-statistics"
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "polars" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1c/f2/17e60d86f1cd1e584b4c89175154408b3c0d84191ba95beec1d0c8bb7fb6/polars_statistics-0.4.0.tar.gz", hash = "sha256:f5438bca07d325a56c0566f143fdcc52df336d329b64f87cfbeea06e735b2d99", size = 255562, upload-time = "2026-01-17T20:27:18.241Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d2/23/74cfa80255da05618b221305f9b653c171bbcc9fada15e2d37303fc262b8/polars_statistics-0.4.0-cp39-abi3-macosx_10_12_x86_64.whl", hash = "sha256:bfe4bf6ccc430813874f62bbd435c889b1d6f7ddf2cd6b1e948f0ef092ff14c6", size = 6451862, upload-time = "2026-01-17T20:27:01.068Z" },
+    { url = "https://files.pythonhosted.org/packages/2c/90/32c9609af5bc8d3fdec807959c3c169d73c66512f236a4774d3272c49622/polars_statistics-0.4.0-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:576e50e45ebda7d18fddf32db3da24048035ebf4c83eba2b0e9877f4a1799384", size = 5819005, upload-time = "2026-01-17T20:27:03.742Z" },
+    { url = "https://files.pythonhosted.org/packages/ce/c0/6419b66b8b6e5d8e37b366101dd2171c84f7ab2cd5911e777fa6ab9cbbfa/polars_statistics-0.4.0-cp39-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:6a0ad8149c0e6603869e9496c8b330649ff7095282bbe6b897c043246bebcc8c", size = 5995622, upload-time = "2026-01-17T20:27:06.44Z" },
+    { url = "https://files.pythonhosted.org/packages/e5/2a/cecf4d0fae3a6ad27b172d87a0f30ddb45745f070b7f04284ce65deadbf0/polars_statistics-0.4.0-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:7d00732c59618cadbc67c63e613fca033940694be5e71fbda608d079f6cf79df", size = 6850090, upload-time = "2026-01-17T20:27:08.706Z" },
+    { url = "https://files.pythonhosted.org/packages/92/e5/7da83e2fdb6a7069159e1926330d4394f710676bbd639ed74b23529a9e6a/polars_statistics-0.4.0-cp39-abi3-win_amd64.whl", hash = "sha256:5b5425c2805546daecf9f5712b80af1b5037cfef415ad96870fe51262fed50aa", size = 7515489, upload-time = "2026-01-17T20:27:11.698Z" },
+    { url = "https://files.pythonhosted.org/packages/66/78/c761863d198e53249c95ec9a7bde84cc8ee29496777c7410d14b8a83acd7/polars_statistics-0.4.0-pp310-pypy310_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:d2df21991b06f6cc52d2690bb658374f50a6d476df058518835c31e7192c95c0", size = 5993553, upload-time = "2026-01-17T20:27:13.446Z" },
 ]
 
 [[package]]

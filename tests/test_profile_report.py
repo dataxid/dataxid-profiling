@@ -145,12 +145,14 @@ class TestProfileReportCorrelations:
         report = ProfileReport(mixed_df)
         assert isinstance(report.correlations, dict)
         assert "pearson" in report.correlations
+        assert "spearman" in report.correlations
 
     def test_correlations_in_to_dict(self, mixed_df: pl.DataFrame):
         report = ProfileReport(mixed_df)
         d = report.to_dict()
         assert "correlations" in d
         assert "pearson" in d["correlations"]
+        assert "matrix" in d["correlations"]["pearson"]
 
     def test_no_correlations_overview(self, mixed_df: pl.DataFrame):
         report = ProfileReport(mixed_df, mode="overview")
@@ -197,12 +199,13 @@ class TestProfileReportToHtml:
     def test_to_html_contains_correlations(self, mixed_df: pl.DataFrame):
         report = ProfileReport(mixed_df)
         html = report.to_html()
-        assert "corr_heatmap" in html
+        assert "corr_pearson" in html
+        assert "corr_spearman" in html
 
     def test_to_html_no_correlation_overview(self, mixed_df: pl.DataFrame):
         report = ProfileReport(mixed_df, mode="overview")
         html = report.to_html()
-        assert "corr_heatmap" not in html
+        assert "corr_pearson" not in html
 
 
 class TestProfileReportEdgeCases:

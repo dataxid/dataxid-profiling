@@ -11,7 +11,7 @@ import polars as pl  # noqa: TC002 — used at runtime
 from dataxid_profiling._alerts import Alert, AlertType, check_quality
 from dataxid_profiling._analyzers import ColumnStats, analyze
 from dataxid_profiling._config import ProfileConfig
-from dataxid_profiling._correlations import compute_correlations
+from dataxid_profiling._correlations import CorrelationResult, compute_correlations
 from dataxid_profiling._dataset_overview import DatasetOverview, compute_overview
 from dataxid_profiling._ingest import ingest
 from dataxid_profiling._report._html import render_html
@@ -59,7 +59,7 @@ class ProfileReport:
         self._alerts: list[Alert] = check_quality(
             self._column_stats, self._overview, self._config
         )
-        self._correlations: dict[str, pl.DataFrame] = compute_correlations(
+        self._correlations: dict[str, CorrelationResult] = compute_correlations(
             self._df, self._column_types, self._config
         )
 
@@ -88,13 +88,16 @@ class ProfileReport:
         return {name: asdict(s) for name, s in self._column_stats.items()}
 
     @property
-    def correlations(self) -> dict[str, pl.DataFrame]:
+    def correlations(self) -> dict[str, CorrelationResult]:
         return self._correlations
 
     def to_dict(self) -> dict[str, Any]:
-        corr_dict = {}
-        for method, matrix in self._correlations.items():
-            corr_dict[method] = matrix.to_dicts()
+        corr_dict: dict[str, Any] = {}
+        for method, cr in self._correlations.items():
+            entry: dict[str, Any] = {"matrix": cr.matrix.to_dicts()}
+            if cr.pvalues is not None:
+                entry["pvalues"] = cr.pvalues.to_dicts()
+            corr_dict[method] = entry
 
         return {
             "title": self._config.title,

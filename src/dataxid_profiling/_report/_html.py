@@ -8,7 +8,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import polars as pl  # noqa: TC002 — used at runtime in correlation processing
 from jinja2 import Environment, FileSystemLoader
 
 from dataxid_profiling._alerts import Alert  # noqa: TC001 — used at runtime
@@ -18,6 +17,7 @@ from dataxid_profiling._analyzers import (
     ColumnStats,
     NumericStats,
 )
+from dataxid_profiling._correlations import CorrelationResult  # noqa: TC001
 from dataxid_profiling._dataset_overview import DatasetOverview  # noqa: TC001 — used at runtime
 from dataxid_profiling._report._charts import ChartRenderer, EChartsRenderer
 
@@ -31,7 +31,7 @@ def render_html(
     overview: DatasetOverview,
     column_stats: dict[str, ColumnStats],
     alerts: list[Alert],
-    correlations: dict[str, pl.DataFrame],
+    correlations: dict[str, CorrelationResult],
     chart_renderer: ChartRenderer | None = None,
 ) -> str:
     renderer = chart_renderer or EChartsRenderer()
@@ -39,7 +39,7 @@ def render_html(
     template = env.get_template("report.html.j2")
 
     columns = _prepare_columns(column_stats, renderer)
-    correlation_chart = _prepare_correlation_chart(correlations, renderer)
+    correlation_charts = _prepare_correlation_charts(correlations, renderer)
     missing_bar_chart = _prepare_missing_bar_chart(overview, renderer)
     alert_dicts = [
         {"column": a.column, "alert_type": a.alert_type.name, "value": a.value}
@@ -55,7 +55,7 @@ def render_html(
         overview=ov_dict,
         columns=columns,
         alerts=alert_dicts,
-        correlation_chart=correlation_chart,
+        correlation_charts=correlation_charts,
         missing_bar_chart=missing_bar_chart,
         logo_b64=_load_asset_b64("dataxid_logo.png"),
         icon_b64=_load_asset_b64("icon.png"),
@@ -182,17 +182,32 @@ def _prepare_missing_bar_chart(
 
 
 
-def _prepare_correlation_chart(
-    correlations: dict[str, pl.DataFrame],
+_SYMMETRIC_RANGE: dict[str, tuple[float, float]] = {
+    "pearson": (-1.0, 1.0),
+    "spearman": (-1.0, 1.0),
+    "kendall": (-1.0, 1.0),
+}
+
+
+def _prepare_correlation_charts(
+    correlations: dict[str, CorrelationResult],
     renderer: ChartRenderer,
-) -> str:
-    if "pearson" not in correlations:
-        return ""
+) -> list[dict[str, str]]:
+    """Build one heatmap per correlation method. Returns [{name, div_id, chart_html}, ...]."""
+    charts: list[dict[str, str]] = []
+    for method, cr in correlations.items():
+        matrix = cr.matrix
+        labels = matrix["column"].to_list()
+        data: list[list[float]] = []
+        for row in matrix.iter_rows(named=True):
+            data.append([float(row[col]) for col in labels])
 
-    matrix = correlations["pearson"]
-    labels = matrix["column"].to_list()
-    data: list[list[float]] = []
-    for row in matrix.iter_rows(named=True):
-        data.append([float(row[col]) for col in labels])
-
-    return renderer.heatmap("corr_heatmap", labels, labels, data, title="Pearson Correlation")
+        div_id = f"corr_{method}"
+        display_name = method.replace("_", " ").title()
+        title_str = f"{display_name} Correlation"
+        vrange = _SYMMETRIC_RANGE.get(method)
+        chart_html = renderer.heatmap(
+            div_id, labels, labels, data, title=title_str, value_range=vrange,
+        )
+        charts.append({"name": display_name, "div_id": div_id, "chart_html": chart_html})
+    return charts

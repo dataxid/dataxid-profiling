@@ -74,20 +74,40 @@ class TestRenderAlerts:
 
 
 class TestRenderCorrelations:
-    def test_correlation_heatmap(self, numeric_df: pl.DataFrame):
+    def test_correlation_heatmaps(self, numeric_df: pl.DataFrame):
         html = _render(numeric_df)
         assert "Correlations" in html
-        assert "corr_heatmap" in html
+        assert "corr_pearson" in html
+        assert "corr_spearman" in html
         assert "heatmap" in html
+
+    def test_tab_buttons(self, numeric_df: pl.DataFrame):
+        html = _render(numeric_df)
+        assert "corr-tabs" in html
+        assert "Pearson" in html
+        assert "Spearman" in html
+        assert "switchCorrTab" in html
+
+    def test_tab_panels(self, numeric_df: pl.DataFrame):
+        html = _render(numeric_df)
+        assert "panel-corr_pearson" in html
+        assert "panel-corr_spearman" in html
+
+    def test_first_tab_active(self, numeric_df: pl.DataFrame):
+        html = _render(numeric_df)
+        assert 'class="corr-panel p-6"' in html
+        assert 'class="corr-panel p-6 hidden"' in html
 
     def test_no_correlation_single_numeric(self):
         df = pl.DataFrame({"a": [1, 2, 3], "b": ["x", "y", "z"]})
         html = _render(df)
-        assert "corr_heatmap" not in html
+        assert "corr_pearson" not in html
+        assert 'id="corr-tabs"' not in html
 
     def test_no_correlation_overview_mode(self, numeric_df: pl.DataFrame):
         html = _render(numeric_df, ProfileConfig(mode="overview"))
-        assert "corr_heatmap" not in html
+        assert "corr_pearson" not in html
+        assert 'id="corr-tabs"' not in html
 
 
 class TestRenderCharts:

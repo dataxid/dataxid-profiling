@@ -41,6 +41,7 @@ class ChartRenderer(Protocol):
         y_labels: list[str],
         data: list[list[float]],
         title: str = "",
+        value_range: tuple[float, float] | None = None,
     ) -> str: ...
 
     def pie(
@@ -132,6 +133,7 @@ class EChartsRenderer:
         y_labels: list[str],
         data: list[list[float]],
         title: str = "",
+        value_range: tuple[float, float] | None = None,
     ) -> str:
         flat_data = []
         v_min, v_max = float("inf"), float("-inf")
@@ -142,7 +144,9 @@ class EChartsRenderer:
                     v_min = min(v_min, val)
                     v_max = max(v_max, val)
 
-        if v_min == float("inf"):
+        if value_range is not None:
+            v_min, v_max = value_range
+        elif v_min == float("inf"):
             v_min, v_max = -1.0, 1.0
 
         option = {
