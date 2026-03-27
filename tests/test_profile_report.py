@@ -177,6 +177,26 @@ class TestProfileReportCorrelations:
         assert "cramers_v" in d["correlations"]
         assert "matrix" in d["correlations"]["cramers_v"]
 
+    def test_phik_with_mixed_columns(self):
+        df = pl.DataFrame({
+            "n1": list(range(20)),
+            "n2": list(range(20, 40)),
+            "c1": ["a", "b"] * 10,
+            "c2": ["x", "y"] * 10,
+        })
+        report = ProfileReport(df)
+        assert "phik" in report.correlations
+
+    def test_phik_in_to_dict(self):
+        df = pl.DataFrame({
+            "n1": list(range(20)),
+            "c1": ["a", "b"] * 10,
+        })
+        report = ProfileReport(df)
+        d = report.to_dict()
+        assert "phik" in d["correlations"]
+        assert "matrix" in d["correlations"]["phik"]
+
     def test_no_correlations_single_numeric(self):
         df = pl.DataFrame({"a": [1, 2, 3], "b": ["x", "y", "z"]})
         report = ProfileReport(df)

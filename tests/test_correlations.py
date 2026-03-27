@@ -367,11 +367,152 @@ class TestCramersVBasic:
         assert rows["a"]["b"] == pytest.approx(expected_v, abs=1e-4)
 
 
+class TestPhiKBasic:
+    @pytest.fixture()
+    def mixed_phik_df(self) -> pl.DataFrame:
+        import random
+        random.seed(42)
+        n = 200
+        return pl.DataFrame({
+            "num1": [random.gauss(0, 1) for _ in range(n)],
+            "num2": [random.gauss(0, 1) for _ in range(n)],
+            "cat1": [random.choice(["a", "b", "c"]) for _ in range(n)],
+            "cat2": [random.choice(["x", "y", "z"]) for _ in range(n)],
+        })
+
+    def test_returns_phik_key(self, mixed_phik_df: pl.DataFrame):
+        result = _corr(mixed_phik_df)
+        assert "phik" in result
+        assert isinstance(result["phik"], CorrelationResult)
+
+    def test_matrix_shape(self, mixed_phik_df: pl.DataFrame):
+        matrix = _corr(mixed_phik_df)["phik"].matrix
+        assert matrix.height == 4
+        assert matrix.width == 4 + 1
+
+    def test_diagonal_is_one(self, mixed_phik_df: pl.DataFrame):
+        matrix = _corr(mixed_phik_df)["phik"].matrix
+        for row in matrix.iter_rows(named=True):
+            assert row[row["column"]] == pytest.approx(1.0)
+
+    def test_symmetric(self, mixed_phik_df: pl.DataFrame):
+        matrix = _corr(mixed_phik_df)["phik"].matrix
+        rows = {r["column"]: r for r in matrix.iter_rows(named=True)}
+        cols = [c for c in matrix.columns if c != "column"]
+        for a in cols:
+            for b in cols:
+                assert rows[a][b] == pytest.approx(rows[b][a], abs=1e-10)
+
+    def test_values_in_range(self, mixed_phik_df: pl.DataFrame):
+        matrix = _corr(mixed_phik_df)["phik"].matrix
+        for row in matrix.iter_rows(named=True):
+            for col in matrix.columns:
+                if col == "column":
+                    continue
+                assert 0.0 <= row[col] <= 1.0
+
+    def test_no_pvalues(self, mixed_phik_df: pl.DataFrame):
+        result = _corr(mixed_phik_df)["phik"]
+        assert result.pvalues is None
+
+    def test_perfect_association(self):
+        """Identical columns → phik ≈ 1.0."""
+        df = pl.DataFrame({
+            "a": ["x", "y", "z"] * 30,
+            "b": ["x", "y", "z"] * 30,
+        })
+        matrix = _corr(df)["phik"].matrix
+        rows = {r["column"]: r for r in matrix.iter_rows(named=True)}
+        assert rows["a"]["b"] == pytest.approx(1.0, abs=0.05)
+
+    def test_independent_columns_near_zero(self):
+        """Independent columns → phik ≈ 0."""
+        import random
+        random.seed(99)
+        n = 2000
+        df = pl.DataFrame({
+            "a": [random.choice(["x", "y", "z"]) for _ in range(n)],
+            "b": [random.choice(["p", "q", "r"]) for _ in range(n)],
+        })
+        matrix = _corr(df)["phik"].matrix
+        rows = {r["column"]: r for r in matrix.iter_rows(named=True)}
+        assert rows["a"]["b"] < 0.1
+
+    def test_mixed_numeric_categorical(self):
+        """Phi K works across numeric × categorical pairs."""
+        import random
+        random.seed(42)
+        n = 200
+        cats = [random.choice(["a", "b"]) for _ in range(n)]
+        nums = [1.0 + random.gauss(0, 0.1) if c == "a" else 5.0 + random.gauss(0, 0.1) for c in cats]
+        df = pl.DataFrame({"num": nums, "cat": cats})
+        result = _corr(df)
+        assert "phik" in result
+        rows = {r["column"]: r for r in result["phik"].matrix.iter_rows(named=True)}
+        assert rows["cat"]["num"] > 0.3
+
+    def test_columns_sorted(self, mixed_phik_df: pl.DataFrame):
+        matrix = _corr(mixed_phik_df)["phik"].matrix
+        col_labels = matrix["column"].to_list()
+        assert col_labels == sorted(col_labels)
+
+    def test_includes_all_column_types(self, mixed_phik_df: pl.DataFrame):
+        """Phi K matrix includes both numeric and categorical columns."""
+        matrix = _corr(mixed_phik_df)["phik"].matrix
+        col_labels = matrix["column"].to_list()
+        assert "num1" in col_labels
+        assert "cat1" in col_labels
+
+    def test_matches_phik_library(self):
+        """Our values must match phik library with noise correction."""
+        import numpy as np
+        from phik import phik_matrix as phik_matrix_fn
+
+        np.random.seed(42)
+        n = 5000
+        data = {
+            "num1": np.random.randn(n).tolist(),
+            "num2": (np.random.randn(n) * 2).tolist(),
+            "cat1": np.random.choice(["a", "b", "c"], n).tolist(),
+            "cat2": np.random.choice(["x", "y", "z"], n).tolist(),
+        }
+        our_result = _corr(pl.DataFrame(data))["phik"].matrix
+        our_rows = {r["column"]: r for r in our_result.iter_rows(named=True)}
+
+        phik_ref = phik_matrix_fn(
+            pd.DataFrame(data),
+            interval_cols=["num1", "num2"],
+            verbose=False,
+            njobs=1,
+            noise_correction=True,
+        )
+        for a in ["cat1", "cat2", "num1", "num2"]:
+            for b in ["cat1", "cat2", "num1", "num2"]:
+                if a == b:
+                    continue
+                assert our_rows[a][b] == pytest.approx(
+                    phik_ref.loc[a, b], abs=0.01
+                ), f"{a}×{b}: {our_rows[a][b]} vs {phik_ref.loc[a, b]}"
+
+
 class TestCorrelationEdgeCases:
-    def test_single_numeric_column(self):
+    def test_single_numeric_single_text(self):
+        """1 numeric + 1 text (high unique ratio) → no pearson, no cramers_v, no phik."""
         df = pl.DataFrame({"a": [1, 2, 3], "city": ["x", "y", "z"]})
         result = _corr(df)
-        assert result == {}
+        assert "pearson" not in result
+        assert "cramers_v" not in result
+        assert "phik" not in result
+
+    def test_single_numeric_single_categorical_has_phik(self):
+        """1 numeric + 1 categorical (low unique ratio) → phik only."""
+        df = pl.DataFrame({
+            "a": list(range(20)),
+            "cat": ["x", "y"] * 10,
+        })
+        result = _corr(df)
+        assert "pearson" not in result
+        assert "phik" in result
 
     def test_no_numeric_columns_has_cramers_v(self, categorical_df: pl.DataFrame):
         result = _corr(categorical_df)

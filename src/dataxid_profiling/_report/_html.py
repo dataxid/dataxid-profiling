@@ -187,6 +187,7 @@ _SYMMETRIC_RANGE: dict[str, tuple[float, float]] = {
     "spearman": (-1.0, 1.0),
     "kendall": (-1.0, 1.0),
     "cramers_v": (0.0, 1.0),
+    "phik": (0.0, 1.0),
 }
 
 

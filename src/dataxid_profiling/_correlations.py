@@ -4,6 +4,7 @@ Pearson and Spearman use polars-statistics (Rust plugin).
 Kendall tau-b uses scipy's battle-tested C merge-sort — O(n log n)
 vs the O(n²) naive pairwise approach.
 Cramér's V uses Polars group_by for contingency tables + ps.cramers_v (Rust).
+Phi K uses Polars contingency tables + ps.chisq_test (Rust) + phik (scipy Fortran).
 """
 
 from __future__ import annotations
@@ -12,8 +13,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+import numpy as np
 import polars as pl
 import polars_statistics as ps
+from phik.bivariate import phik_from_chi2
 from scipy.stats import kendalltau
 
 from dataxid_profiling._type_inference import ColumnType
@@ -45,6 +48,9 @@ def compute_correlations(
     if config is not None and config.is_overview:
         return {}
 
+    if df.height < 2:
+        return {}
+
     numeric_cols = sorted(
         col for col, ct in column_types.items() if ct is ColumnType.NUMERIC
     )
@@ -62,6 +68,12 @@ def compute_correlations(
 
     if len(categorical_cols) >= 2:
         result["cramers_v"] = _build_matrix(df, categorical_cols, _cramers_v_pair)
+
+    all_cols = sorted(numeric_cols + categorical_cols)
+    if len(all_cols) >= 2:
+        numeric_set = frozenset(numeric_cols)
+        phik_fn = _make_phik_pair(numeric_set)
+        result["phik"] = _build_matrix(df, all_cols, phik_fn)
 
     return result
 
@@ -195,3 +207,55 @@ def _cramers_v_pair(
     row = result.unnest(result.columns[0]).row(0, named=True)
     v = float(row["estimate"]) if row["estimate"] is not None else 0.0
     return v, None
+
+
+_PHIK_BINS = 10
+
+
+def _bin_numeric(df: pl.DataFrame, col: str, n_bins: int = _PHIK_BINS) -> pl.DataFrame:
+    """Bin a numeric column into equal-width categories via Polars cut()."""
+    col_min = df[col].min()
+    col_max = df[col].max()
+    if col_min is None or col_max is None or col_min == col_max:
+        return df.with_columns(pl.lit("const").alias(col))
+    edges = np.linspace(col_min, col_max, n_bins + 1)[1:-1].tolist()
+    return df.with_columns(pl.col(col).cut(edges).cast(pl.String).alias(col))
+
+
+def _make_phik_pair(numeric_cols: frozenset[str]) -> PairFn:
+    """Return a phik pair function that knows which columns are numeric."""
+
+    def _phik_pair(
+        df: pl.DataFrame, col_a: str, col_b: str
+    ) -> tuple[float, float | None]:
+        """Phi K via Polars contingency + ps.chisq_test (Rust) + phik_from_chi2."""
+        sub = df.select(col_a, col_b).drop_nulls()
+        if sub.height < 2:
+            return 0.0, None
+        if col_a in numeric_cols:
+            sub = _bin_numeric(sub, col_a)
+        if col_b in numeric_cols:
+            sub = _bin_numeric(sub, col_b)
+
+        flat, nr, nc = _build_contingency_flat(sub, col_a, col_b)
+        if nr < 2 or nc < 2:
+            return 0.0, None
+
+        ct_df = pl.DataFrame({"ct": flat})
+        try:
+            result = ct_df.select(ps.chisq_test("ct", n_rows=nr, n_cols=nc))
+        except pl.exceptions.ComputeError:
+            return float("nan"), None
+        row = result.unnest(result.columns[0]).row(0, named=True)
+        chi2 = float(row["statistic"]) if row["statistic"] is not None else 0.0
+        n = int(row["n"]) if row["n"] is not None else sub.height
+
+        if chi2 <= 0:
+            return 0.0, None
+        pedestal = (nr - 1) * (nc - 1)
+        try:
+            return float(phik_from_chi2(chi2, n, nx=nr, ny=nc, pedestal=pedestal)), None
+        except (ValueError, ZeroDivisionError):
+            return 0.0, None
+
+    return _phik_pair

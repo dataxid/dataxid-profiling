@@ -112,7 +112,7 @@ class TestRenderCorrelations:
         assert "corr_pearson" not in html
         assert "corr_cramers_v" in html
 
-    def test_mixed_has_both_tabs(self):
+    def test_mixed_has_all_tabs(self):
         df = pl.DataFrame({
             "n1": [1, 2, 3, 4, 5],
             "n2": [5, 4, 3, 2, 1],
@@ -122,6 +122,13 @@ class TestRenderCorrelations:
         html = _render(df)
         assert "corr_pearson" in html
         assert "corr_cramers_v" in html
+        assert "corr_phik" in html
+
+    def test_phik_tab_present(self, numeric_df: pl.DataFrame):
+        html = _render(numeric_df)
+        assert "corr_phik" in html
+        assert "Phik" in html
+        assert "panel-corr_phik" in html
 
     def test_no_correlation_single_numeric(self):
         df = pl.DataFrame({"a": [1, 2, 3], "b": ["x", "y", "z"]})
