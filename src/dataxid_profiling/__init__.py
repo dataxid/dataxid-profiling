@@ -14,6 +14,7 @@ from dataxid_profiling._config import ProfileConfig
 from dataxid_profiling._correlations import CorrelationResult, compute_correlations
 from dataxid_profiling._dataset_overview import DatasetOverview, compute_overview
 from dataxid_profiling._ingest import ingest
+from dataxid_profiling._interactions import InteractionData, compute_interactions
 from dataxid_profiling._report._html import render_html
 from dataxid_profiling._type_inference import ColumnType, infer_types
 
@@ -59,6 +60,9 @@ class ProfileReport:
         self._correlations: dict[str, CorrelationResult] = compute_correlations(
             self._df, self._column_types, self._config
         )
+        self._interactions: InteractionData | None = compute_interactions(
+            self._df, self._column_types, self._config
+        )
         self._alerts: list[Alert] = check_quality(
             self._column_stats, self._overview, self._config, self._correlations
         )
@@ -91,6 +95,10 @@ class ProfileReport:
     def correlations(self) -> dict[str, CorrelationResult]:
         return self._correlations
 
+    @property
+    def interactions(self) -> InteractionData | None:
+        return self._interactions
+
     def to_dict(self) -> dict[str, Any]:
         corr_dict: dict[str, Any] = {}
         for method, cr in self._correlations.items():
@@ -113,6 +121,25 @@ class ProfileReport:
                 for a in self._alerts
             ],
             "correlations": corr_dict,
+            "interactions": self._serialize_interactions(),
+        }
+
+    def _serialize_interactions(self) -> dict[str, Any] | None:
+        if self._interactions is None:
+            return None
+        bp: dict[str, dict[str, list[dict]]] = {}
+        for cat, num_map in self._interactions.boxplot_stats.items():
+            bp[cat] = {}
+            for num, groups in num_map.items():
+                bp[cat][num] = [asdict(g) for g in groups]
+        return {
+            "numeric_columns": self._interactions.numeric_columns,
+            "categorical_columns": self._interactions.categorical_columns,
+            "numeric_data": self._interactions.numeric_data,
+            "boxplot_stats": bp,
+            "sampled": self._interactions.sampled,
+            "total_rows": self._interactions.total_rows,
+            "sample_size": self._interactions.sample_size,
         }
 
     def to_html(self, path: str | Path | None = None) -> str:
@@ -123,6 +150,7 @@ class ProfileReport:
             column_stats=self._column_stats,
             alerts=self._alerts,
             correlations=self._correlations,
+            interactions=self._interactions,
         )
         if path is not None:
             from pathlib import Path as P

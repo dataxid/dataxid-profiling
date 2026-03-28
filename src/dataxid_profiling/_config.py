@@ -26,6 +26,11 @@ class ProfileConfig:
     duplicate_threshold: float = 0.0  # any duplicate → DUPLICATES alert
     uniform_pvalue_threshold: float = 0.05  # p > 0.05 → UNIFORM alert (can't reject uniform H0)
 
+    # Interactions
+    interaction_sample_size: int = 100_000  # sample above this row count
+    interaction_sample_seed: int = 42  # reproducible sampling
+    interaction_cardinality_limit: int = 50  # skip categorical cols with more unique values
+
     # Display
     n_top_values: int = 5  # value_counts'ta gösterilecek top N
     histogram_bins: int = 50
@@ -58,4 +63,13 @@ class ProfileConfig:
             raise ValueError(msg)
         if self.histogram_bins < 2:
             msg = f"histogram_bins must be >= 2, got {self.histogram_bins}"
+            raise ValueError(msg)
+        if self.interaction_sample_size < 1000:
+            msg = f"interaction_sample_size must be >= 1000, got {self.interaction_sample_size}"
+            raise ValueError(msg)
+        if self.interaction_cardinality_limit < 2:
+            msg = (
+                "interaction_cardinality_limit must be >= 2, "
+                f"got {self.interaction_cardinality_limit}"
+            )
             raise ValueError(msg)
