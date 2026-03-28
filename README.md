@@ -43,16 +43,19 @@ report = ProfileReport(pd.read_csv("data.csv"))
   <img src="docs/report-correlations.png" alt="Correlation heatmap" width="700">
 </p>
 
+**Interactions** — scatter plots for numeric pairs and box plots for categorical × numeric pairs, with dynamic column selection.
+
 ## Highlights
 
-- Built on Polars — two runtime dependencies
+- Built on Polars — fast, memory-efficient, Rust-powered
 - 3 lines to profile any dataset
 - Programmatic-first: `.to_dict()`, `.stats`, `.alerts`
 - Interactive HTML reports with ECharts
 - Accepts Polars, Pandas, CSV, and Parquet
 - 5 column types: numeric, categorical, boolean, datetime, text
 - 7 data quality alerts out of the box
-- Pearson correlation heatmap
+- 5 correlation types: Pearson, Spearman, Kendall, Cramér's V, Phi K
+- Interactions: scatter plot + box plot with dynamic column selection
 - Two modes: `"complete"` for deep analysis, `"overview"` for speed
 - Fully typed
 
@@ -102,6 +105,7 @@ report = ProfileReport(df, config=config)
 | Basic stats | ✓ | ✓ |
 | Histograms & value counts | ✓ | ✓ |
 | Correlations | ✓ | ✗ |
+| Interactions | ✓ | ✗ |
 | Character analysis | ✓ | ✗ |
 | Duplicate rows table | ✓ | ✗ |
 

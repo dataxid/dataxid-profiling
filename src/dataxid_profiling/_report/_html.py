@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import json
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
@@ -19,6 +20,7 @@ from dataxid_profiling._analyzers import (
 )
 from dataxid_profiling._correlations import CorrelationResult  # noqa: TC001
 from dataxid_profiling._dataset_overview import DatasetOverview  # noqa: TC001 — used at runtime
+from dataxid_profiling._interactions import InteractionData  # noqa: TC001
 from dataxid_profiling._report._charts import ChartRenderer, EChartsRenderer
 
 _TEMPLATE_DIR = Path(__file__).parent / "templates"
@@ -32,6 +34,7 @@ def render_html(
     column_stats: dict[str, ColumnStats],
     alerts: list[Alert],
     correlations: dict[str, CorrelationResult],
+    interactions: InteractionData | None = None,
     chart_renderer: ChartRenderer | None = None,
 ) -> str:
     renderer = chart_renderer or EChartsRenderer()
@@ -41,6 +44,7 @@ def render_html(
     columns = _prepare_columns(column_stats, renderer)
     correlation_charts = _prepare_correlation_charts(correlations, renderer)
     missing_bar_chart = _prepare_missing_bar_chart(overview, renderer)
+    interactions_payload = _prepare_interactions(interactions)
     alert_dicts = [
         {
             "column": a.column,
@@ -61,6 +65,7 @@ def render_html(
         columns=columns,
         alerts=alert_dicts,
         correlation_charts=correlation_charts,
+        interactions=interactions_payload,
         missing_bar_chart=missing_bar_chart,
         logo_b64=_load_asset_b64("dataxid_logo.png"),
         icon_b64=_load_asset_b64("icon.png"),
@@ -218,3 +223,33 @@ def _prepare_correlation_charts(
         )
         charts.append({"name": display_name, "div_id": div_id, "chart_html": chart_html})
     return charts
+
+
+def _prepare_interactions(
+    interactions: InteractionData | None,
+) -> dict[str, Any] | None:
+    """Serialize InteractionData to a template-friendly dict with JSON payloads."""
+    if interactions is None:
+        return None
+
+    boxplot_serialized: dict[str, dict[str, list[dict]]] = {}
+    for cat_col, num_map in interactions.boxplot_stats.items():
+        boxplot_serialized[cat_col] = {}
+        for num_col, groups in num_map.items():
+            boxplot_serialized[cat_col][num_col] = [
+                asdict(g) for g in groups
+            ]
+
+    return {
+        "numeric_columns": interactions.numeric_columns,
+        "categorical_columns": interactions.categorical_columns,
+        "numeric_data_json": json.dumps(
+            interactions.numeric_data, ensure_ascii=False,
+        ),
+        "boxplot_stats_json": json.dumps(
+            boxplot_serialized, ensure_ascii=False,
+        ),
+        "sampled": interactions.sampled,
+        "total_rows": interactions.total_rows,
+        "sample_size": interactions.sample_size,
+    }

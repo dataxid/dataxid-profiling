@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-03-28
+
+### Added
+
+- Interactions tab — ECharts scatter plot (numeric × numeric) and box plot (categorical × numeric)
+- Dynamic column selection with smart dropdown filtering (prevents same-column and cat × cat pairs)
+- Configurable sampling for large datasets (`interaction_sample_size`, default 100K)
+- Lazy chart rendering — charts initialize only when columns are selected
+- Zoom, pan, and dynamic point scaling on scatter plots
+- Box plot with 1.5 IQR whiskers and outlier overlay
+- `interactions` property and serialization in `to_dict()` / `to_json()`
+
 ## [0.2.0] - 2026-03-27
 
 ### Added
@@ -45,5 +57,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - CSV and Parquet file path ingestion
 - PEP 561 `py.typed` marker
 
+[0.3.0]: https://github.com/dataxid/dataxid-profiling/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/dataxid/dataxid-profiling/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/dataxid/dataxid-profiling/releases/tag/v0.1.0

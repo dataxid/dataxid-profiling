@@ -321,6 +321,244 @@
     </section>
     {% endif %}
 
+    {# ── Interactions ── #}
+    {% if interactions %}
+    <section>
+      <h2 class="text-lg font-semibold text-brand-teal mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>
+        Interactions
+        {% if interactions.sampled %}
+        <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-amber-50 text-amber-600 ring-1 ring-amber-200">
+          Showing {{ interactions.sample_size | format_number }} of {{ interactions.total_rows | format_number }} rows
+        </span>
+        {% endif %}
+      </h2>
+      <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div class="flex flex-wrap items-center gap-4 px-6 pt-5 pb-3">
+          <div class="flex items-center gap-2">
+            <label for="interact-x" class="text-sm font-medium text-gray-500">X</label>
+            <select id="interact-x" class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal focus:outline-none">
+              {% for col in interactions.numeric_columns %}
+              <option value="{{ col }}" data-type="numeric"{% if loop.first %} selected{% endif %}>{{ col }} (#)</option>
+              {% endfor %}
+              {% for col in interactions.categorical_columns %}
+              <option value="{{ col }}" data-type="categorical">{{ col }} (Aa)</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <label for="interact-y" class="text-sm font-medium text-gray-500">Y</label>
+            <select id="interact-y" class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal focus:outline-none">
+              {% for col in interactions.numeric_columns %}
+              <option value="{{ col }}" data-type="numeric"{% if loop.index0 == 1 %} selected{% elif loop.first and interactions.numeric_columns | length == 1 %} selected{% endif %}>{{ col }} (#)</option>
+              {% endfor %}
+              {% for col in interactions.categorical_columns %}
+              <option value="{{ col }}" data-type="categorical">{{ col }} (Aa)</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div id="interact-msg" class="text-sm text-gray-400 italic hidden"></div>
+        </div>
+        <div id="interact-chart" style="width:100%;height:450px" class="px-6 pb-6"></div>
+      </div>
+    </section>
+
+    <script>
+    (function(){
+      var numData = {{ interactions.numeric_data_json | safe }};
+      var boxData = {{ interactions.boxplot_stats_json | safe }};
+      var selX = document.getElementById('interact-x');
+      var selY = document.getElementById('interact-y');
+      var chartDom = document.getElementById('interact-chart');
+      var msgEl = document.getElementById('interact-msg');
+      var chart = null;
+
+      function fmtNum(v) {
+        if (Math.abs(v) >= 1e6) return (v/1e6).toFixed(1) + 'M';
+        if (Math.abs(v) >= 1e3) return (v/1e3).toFixed(1) + 'K';
+        return Number.isInteger(v) ? v.toString() : v.toFixed(2);
+      }
+      function fmtAxis(v) {
+        if (Math.abs(v) >= 1e6) return (v/1e6).toFixed(0) + 'M';
+        if (Math.abs(v) >= 1e3) return (v/1e3).toFixed(0) + 'K';
+        return v;
+      }
+
+      var numCols = {{ interactions.numeric_columns | tojson }};
+      var catCols = {{ interactions.categorical_columns | tojson }};
+
+      function getType(sel) {
+        return sel.options[sel.selectedIndex].getAttribute('data-type');
+      }
+
+      function buildOptions(cols, type, symbol) {
+        return cols.map(function(c) {
+          return '<option value="' + c + '" data-type="' + type + '">' + c + ' (' + symbol + ')</option>';
+        }).join('');
+      }
+
+      function updateYOptions() {
+        var xCol = selX.value;
+        var xType = getType(selX);
+        var prev = selY.value;
+        var avail = numCols.filter(function(c) { return c !== xCol; });
+        var html = buildOptions(avail, 'numeric', '#');
+        if (xType === 'numeric') {
+          html += buildOptions(catCols, 'categorical', 'Aa');
+        }
+        selY.innerHTML = html;
+        var found = false;
+        for (var i = 0; i < selY.options.length; i++) {
+          if (selY.options[i].value === prev) { selY.selectedIndex = i; found = true; break; }
+        }
+        if (!found && selY.options.length > 0) selY.selectedIndex = 0;
+      }
+
+      function renderInteraction() {
+        var xCol = selX.value, yCol = selY.value;
+        var xType = getType(selX), yType = getType(selY);
+
+        msgEl.classList.add('hidden');
+        msgEl.textContent = '';
+
+        if (xCol === yCol) {
+          msgEl.textContent = 'Select two different columns.';
+          msgEl.classList.remove('hidden');
+          if (chart) { chart.clear(); }
+          return;
+        }
+
+        if (!chart) { chart = echarts.init(chartDom); }
+
+        if (xType === 'numeric' && yType === 'numeric') {
+          renderScatter(xCol, yCol);
+        } else {
+          var catCol = xType === 'categorical' ? xCol : yCol;
+          var numCol = xType === 'categorical' ? yCol : xCol;
+          var flipped = (yType === 'categorical');
+          renderBoxPlot(catCol, numCol, flipped);
+        }
+      }
+
+      function renderScatter(xCol, yCol) {
+        var xVals = numData[xCol], yVals = numData[yCol];
+        var len = Math.min(xVals.length, yVals.length);
+        var data = new Array(len);
+        for (var i = 0; i < len; i++) { data[i] = [xVals[i], yVals[i]]; }
+
+        var sz = len > 50000 ? 3 : len > 10000 ? 4 : len > 1000 ? 5 : 6;
+        var op = len > 50000 ? 0.6 : len > 10000 ? 0.5 : len > 1000 ? 0.6 : 0.8;
+
+        var isLarge = len > 2000;
+        chart.setOption({
+          animation: false,
+          hoverLayerThreshold: 1000,
+          title: {text: xCol + '  vs  ' + yCol, left: 'center', textStyle: {fontSize: 13}},
+          tooltip: isLarge ? {show: false} : {trigger: 'item', formatter: function(p) {
+            return xCol + ': ' + fmtNum(p.data[0]) + '<br>' + yCol + ': ' + fmtNum(p.data[1]);
+          }},
+          toolbox: {feature: {dataZoom: {title: {zoom: 'Zoom', back: 'Reset'}}, restore: {title: 'Reset'}}},
+          grid: {left: '12%', right: '5%', bottom: '12%', top: '12%'},
+          xAxis: {type: 'value', name: xCol, nameLocation: 'center', nameGap: 30, nameTextStyle: {fontSize: 12, fontWeight: 'bold'}, axisLabel: {formatter: fmtAxis}},
+          yAxis: {type: 'value', name: yCol, nameLocation: 'center', nameGap: 50, nameTextStyle: {fontSize: 12, fontWeight: 'bold'}, axisLabel: {formatter: fmtAxis}},
+          dataZoom: [
+            {type: 'inside', xAxisIndex: 0, zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false},
+            {type: 'inside', yAxisIndex: 0, zoomOnMouseWheel: true, moveOnMouseMove: false, moveOnMouseWheel: false}
+          ],
+          series: [{
+            type: 'scatter',
+            data: data,
+            large: true,
+            largeThreshold: 50000,
+            progressive: isLarge ? 5000 : 0,
+            progressiveThreshold: 10000,
+            symbol: 'circle',
+            symbolSize: sz,
+            itemStyle: {color: 'rgba(232,132,92,' + op + ')'},
+            emphasis: {disabled: isLarge}
+          }]
+        }, true);
+
+        chart.off('restore');
+        chart.on('restore', function() {
+          chart.setOption({series: [{symbolSize: sz, itemStyle: {color: 'rgba(232,132,92,' + op + ')'}}]});
+        });
+
+        var zoomTimer = null;
+        chart.off('datazoom');
+        chart.on('datazoom', function() {
+          if (zoomTimer) clearTimeout(zoomTimer);
+          zoomTimer = setTimeout(function() {
+            var dz = chart.getOption().dataZoom;
+            var xSpan = (dz[0].end - dz[0].start) / 100;
+            var ySpan = (dz[1].end - dz[1].start) / 100;
+            var zoom = 1 / Math.max(Math.min(xSpan, ySpan), 0.01);
+            var newSz = Math.min(Math.max(sz * Math.sqrt(zoom), sz), 14);
+            var newOp = Math.min(op + 0.08 * Math.sqrt(zoom), 0.9);
+            chart.setOption({series: [{symbolSize: newSz, itemStyle: {color: 'rgba(232,132,92,' + newOp + ')'}}]});
+          }, 150);
+        });
+      }
+
+      function renderBoxPlot(catCol, numCol, flipped) {
+        var groups = boxData[catCol] && boxData[catCol][numCol];
+        if (!groups || groups.length === 0) {
+          msgEl.textContent = 'No box plot data for this pair.';
+          msgEl.classList.remove('hidden');
+          chart.clear();
+          return;
+        }
+
+        var categories = [], boxItems = [], outlierPts = [];
+        for (var i = 0; i < groups.length; i++) {
+          var g = groups[i];
+          categories.push(g.category);
+          boxItems.push([g.min, g.q1, g.median, g.q3, g.max]);
+          for (var j = 0; j < g.outliers.length; j++) {
+            outlierPts.push(flipped ? [g.outliers[j], i] : [i, g.outliers[j]]);
+          }
+        }
+
+        var catAxis = {type: 'category', data: categories, axisLabel: {fontSize: 11}};
+        var valAxis = {type: 'value', name: numCol, nameLocation: 'center', nameGap: 45, nameTextStyle: {fontSize: 12, fontWeight: 'bold'}};
+
+        var option = {
+          title: {text: catCol + '  vs  ' + numCol, left: 'center', textStyle: {fontSize: 13}},
+          tooltip: {trigger: 'item'},
+          grid: {left: '12%', right: '5%', bottom: '12%', top: '12%'},
+          xAxis: flipped ? valAxis : catAxis,
+          yAxis: flipped ? catAxis : valAxis,
+          series: [
+            {
+              type: 'boxplot',
+              data: boxItems,
+              itemStyle: {color: '#e8f4f2', borderColor: '#0d3b3b'},
+              emphasis: {itemStyle: {borderColor: '#e8845c'}}
+            },
+            {
+              type: 'scatter',
+              data: outlierPts,
+              symbolSize: 5,
+              itemStyle: {color: '#e8845c', opacity: 0.7}
+            }
+          ]
+        };
+        chart.setOption(option, true);
+      }
+
+      selX.addEventListener('change', function() { updateYOptions(); renderInteraction(); });
+      selY.addEventListener('change', renderInteraction);
+
+      updateYOptions();
+      renderInteraction();
+
+      window.addEventListener('resize', function() {
+        if (chart) chart.resize();
+      });
+    })();
+    </script>
+    {% endif %}
+
     {# ── Missing Values ── #}
     {% if missing_bar_chart %}
     <section>
