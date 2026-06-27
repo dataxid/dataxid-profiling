@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - 2026-06-27
+
+### Added
+
+- Categorical columns now keep their full distribution — top-N values plus an explicit "Other" rollup, so the long tail is never silently dropped
+- "Other" rollup reports how many rows and how many distinct categories fall beyond the top-N, making truncation honest and visible
+- New `other_values` field on `CategoricalStats` (`count`, `distinct_remaining`), serialized in `to_dict()` / `to_json()` — null when there is no tail to summarize
+
+### Dependencies
+
+- Bump `pygments` 2.19.2 → 2.20.0 (#3)
+- Bump `pillow` 12.1.1 → 12.2.0 (#4)
+- Bump `pytest` (dev) 9.0.2 → 9.0.3 (#5)
+
 ## [0.3.0] - 2026-03-28
 
 ### Added
@@ -57,6 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - CSV and Parquet file path ingestion
 - PEP 561 `py.typed` marker
 
+[0.4.0]: https://github.com/dataxid/dataxid-profiling/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/dataxid/dataxid-profiling/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/dataxid/dataxid-profiling/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/dataxid/dataxid-profiling/releases/tag/v0.1.0
