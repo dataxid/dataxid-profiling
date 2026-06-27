@@ -72,6 +72,7 @@ class TestCategoricalEdgeCases:
         assert stats.missing_count == 3
         assert stats.distinct_count == 0
         assert stats.top_values == []
+        assert stats.other_values is None
 
     def test_single_value(self, config: ProfileConfig):
         df = pl.DataFrame({"cat": ["only"] * 5})
@@ -165,3 +166,58 @@ class TestCategoricalScriptDetection:
         df = pl.DataFrame({"cat": ["hello", "world", "test"]})
         stats = analyze_categorical(df, "cat", config)
         assert stats.has_non_ascii is False
+
+
+class TestCategoricalOtherValues:
+    def test_other_values_none_when_within_top_n(self, config: ProfileConfig):
+        df = pl.DataFrame({"cat": ["a", "b", "c", "a", "b", "a"]})
+        stats = analyze_categorical(df, "cat", config)
+        assert stats.distinct_count == 3
+        assert stats.other_values is None
+
+    def test_other_values_present_when_exceeding_top_n(self):
+        df = pl.DataFrame(
+            {"cat": ["a"] * 5 + ["b"] * 4 + ["c"] * 3 + ["d"] * 2 + ["e"] * 1}
+        )
+        config = ProfileConfig(n_top_values=2)
+        stats = analyze_categorical(df, "cat", config)
+        assert len(stats.top_values) == 2
+        assert stats.other_values is not None
+        assert stats.other_values.distinct_remaining == 3
+        assert stats.other_values.count == 6
+
+    def test_distribution_is_lossless(self):
+        df = pl.DataFrame(
+            {"cat": ["a"] * 5 + ["b"] * 4 + ["c"] * 3 + ["d"] * 2 + ["e"] * 1}
+        )
+        config = ProfileConfig(n_top_values=2)
+        stats = analyze_categorical(df, "cat", config)
+        top_total = sum(v["count"] for v in stats.top_values)
+        other_total = stats.other_values.count if stats.other_values else 0
+        assert top_total + other_total == stats.count - stats.missing_count
+
+    def test_other_values_none_when_distinct_equals_n_top(self):
+        df = pl.DataFrame({"cat": ["a", "b", "c", "a", "b", "c"]})
+        config = ProfileConfig(n_top_values=3)
+        stats = analyze_categorical(df, "cat", config)
+        assert stats.distinct_count == 3
+        assert len(stats.top_values) == 3
+        assert stats.other_values is None
+
+    def test_other_values_serializes_via_to_dict(self):
+        from dataxid_profiling import ProfileReport
+
+        df = pl.DataFrame(
+            {"cat": ["a"] * 5 + ["b"] * 4 + ["c"] * 3 + ["d"] * 2 + ["e"] * 1}
+        )
+        report = ProfileReport(df, n_top_values=2)
+        col = report.to_dict()["columns"]["cat"]
+        assert col["other_values"] == {"count": 6, "distinct_remaining": 3}
+
+    def test_other_values_none_serializes_to_none(self):
+        from dataxid_profiling import ProfileReport
+
+        df = pl.DataFrame({"cat": ["a", "b", "c"] * 4})
+        report = ProfileReport(df, n_top_values=10)
+        col = report.to_dict()["columns"]["cat"]
+        assert col["other_values"] is None

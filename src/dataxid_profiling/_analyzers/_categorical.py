@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 import polars as pl
 
-from dataxid_profiling._analyzers import CategoricalStats
+from dataxid_profiling._analyzers import CategoricalStats, OtherValues
 from dataxid_profiling._type_inference import ColumnType
 
 if TYPE_CHECKING:
@@ -34,7 +34,9 @@ def analyze_categorical(
     missing_count: int = row["missing_count"]
     distinct_count: int = row["distinct_count"]
 
-    top_values = _compute_top_values(df, col_name, config.n_top_values)
+    top_values, other_values = _compute_top_values_and_other(
+        df, col_name, config.n_top_values
+    )
     imbalance = _compute_imbalance(top_values, n_rows - missing_count)
 
     is_complete = not config.is_overview
@@ -67,6 +69,7 @@ def analyze_categorical(
         n_characters_distinct=n_chars_distinct,
         has_non_ascii=bool(row["has_non_ascii"]),
         top_values=top_values,
+        other_values=other_values,
         character_counts=char_counts,
         length_histogram=length_hist,
     )
@@ -81,22 +84,34 @@ def _compute_imbalance(
     return top_values[0]["count"] / non_null_count
 
 
-def _compute_top_values(
+def _compute_top_values_and_other(
     df: pl.DataFrame, col_name: str, n_top: int
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], OtherValues | None]:
     vc = (
         df.select(pl.col(col_name))
         .drop_nulls()
         .group_by(col_name)
         .len()
         .sort("len", descending=True)
-        .head(n_top)
     )
 
-    return [
+    top = vc.head(n_top)
+    top_values = [
         {"value": row[col_name], "count": row["len"]}
-        for row in vc.iter_rows(named=True)
+        for row in top.iter_rows(named=True)
     ]
+
+    n_distinct = vc.height
+    if n_distinct > n_top:
+        tail = vc.slice(n_top)
+        other = OtherValues(
+            count=int(tail["len"].sum()),
+            distinct_remaining=n_distinct - n_top,
+        )
+    else:
+        other = None
+
+    return top_values, other
 
 
 def _compute_character_stats(
