@@ -158,6 +158,80 @@ class TestRenderCharts:
         assert "False" in html
 
 
+class TestRenderCategoricalOther:
+    def _truncated_df(self) -> pl.DataFrame:
+        return pl.DataFrame(
+            {"cat": ["a"] * 5 + ["b"] * 4 + ["c"] * 3 + ["d"] * 2 + ["e"] * 1}
+        )
+
+    def test_other_bar_in_chart_when_truncated(self):
+        from dataxid_profiling._analyzers import CategoricalStats, OtherValues
+        from dataxid_profiling._report._charts import EChartsRenderer
+        from dataxid_profiling._report._html import _chart_for_column
+        from dataxid_profiling._type_inference import ColumnType
+
+        stats = CategoricalStats(
+            column_name="cat",
+            column_type=ColumnType.CATEGORICAL,
+            count=15,
+            missing_count=0,
+            missing_pct=0.0,
+            top_values=[{"value": "a", "count": 5}, {"value": "b", "count": 4}],
+            other_values=OtherValues(count=6, distinct_remaining=3),
+        )
+        html = _chart_for_column(stats, EChartsRenderer(), idx=0)
+        assert '"Other"' in html
+        assert "6" in html
+
+    def test_other_absent_from_chart_when_no_tail(self):
+        from dataxid_profiling._analyzers import CategoricalStats
+        from dataxid_profiling._report._charts import EChartsRenderer
+        from dataxid_profiling._report._html import _chart_for_column
+        from dataxid_profiling._type_inference import ColumnType
+
+        stats = CategoricalStats(
+            column_name="cat",
+            column_type=ColumnType.CATEGORICAL,
+            count=6,
+            missing_count=0,
+            missing_pct=0.0,
+            top_values=[{"value": "a", "count": 3}, {"value": "b", "count": 3}],
+            other_values=None,
+        )
+        html = _chart_for_column(stats, EChartsRenderer(), idx=0)
+        assert '"Other"' not in html
+
+    def test_wordcloud_excludes_other(self):
+        from dataxid_profiling._analyzers import CategoricalStats, OtherValues
+        from dataxid_profiling._report._charts import EChartsRenderer
+        from dataxid_profiling._report._html import _wordcloud_for_column
+        from dataxid_profiling._type_inference import ColumnType
+
+        stats = CategoricalStats(
+            column_name="cat",
+            column_type=ColumnType.CATEGORICAL,
+            count=15,
+            missing_count=0,
+            missing_pct=0.0,
+            top_values=[{"value": "a", "count": 5}, {"value": "b", "count": 4}],
+            other_values=OtherValues(count=6, distinct_remaining=3),
+        )
+        html = _wordcloud_for_column(stats, EChartsRenderer(), idx=0)
+        assert '"Other"' not in html
+        assert '"a"' in html
+
+    def test_other_stats_rows_in_report(self):
+        html = _render(self._truncated_df(), ProfileConfig(n_top_values=2))
+        assert "Other (rows)" in html
+        assert "Remaining categories" in html
+
+    def test_other_stats_absent_when_no_tail(self):
+        df = pl.DataFrame({"cat": ["a", "b", "c"] * 4})
+        html = _render(df, ProfileConfig(n_top_values=10))
+        assert "Other (rows)" not in html
+        assert "Remaining categories" not in html
+
+
 class TestRenderWordCloud:
     def test_categorical_wordcloud(self, categorical_df: pl.DataFrame):
         html = _render(categorical_df)

@@ -250,6 +250,10 @@
                   {% set l = "text-gray-500 rounded-l-lg" %}
                   {% set r = "text-right font-semibold text-brand-teal rounded-r-lg" %}
                   {% if col_data.imbalance is not none %}<tr class="stat-row"><td class="{{ s }} {{ l }}">Imbalance</td><td class="{{ s }} {{ r }}">{{ col_data.imbalance | format_pct }}</td></tr>{% endif %}
+                  {% if col_data.other_values %}
+                  <tr class="stat-row"><td class="{{ s }} {{ l }}">Other (rows)</td><td class="{{ s }} {{ r }}">{{ col_data.other_values.count | format_number }}</td></tr>
+                  <tr class="stat-row"><td class="{{ s }} {{ l }}">Remaining categories</td><td class="{{ s }} {{ r }}">{{ col_data.other_values.distinct_remaining | format_number }}</td></tr>
+                  {% endif %}
                   {% if col_data.length_mean is not none %}<tr class="stat-row"><td class="{{ s }} {{ l }}">Avg Length</td><td class="{{ s }} {{ r }}">{{ col_data.length_mean | format_float }}</td></tr>{% endif %}
                   {% if col_data.length_min is not none %}<tr class="stat-row"><td class="{{ s }} {{ l }}">Min Length</td><td class="{{ s }} {{ r }}">{{ col_data.length_min }}</td></tr>{% endif %}
                   {% if col_data.length_max is not none %}<tr class="stat-row"><td class="{{ s }} {{ l }}">Max Length</td><td class="{{ s }} {{ r }}">{{ col_data.length_max }}</td></tr>{% endif %}
