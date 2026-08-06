@@ -60,6 +60,12 @@ class NumericStats(BaseStats):
 
 
 @dataclass(frozen=True)
+class OtherValues:
+    count: int
+    distinct_remaining: int
+
+
+@dataclass(frozen=True)
 class CategoricalStats(BaseStats):
     distinct_count: int = 0
     distinct_pct: float = 0.0
@@ -73,6 +79,7 @@ class CategoricalStats(BaseStats):
     n_characters_distinct: int | None = None
     has_non_ascii: bool = False
     top_values: list[dict[str, Any]] = field(default_factory=list)
+    other_values: OtherValues | None = None
     character_counts: list[dict[str, Any]] = field(default_factory=list)
     length_histogram: list[dict[str, Any]] = field(default_factory=list)
 

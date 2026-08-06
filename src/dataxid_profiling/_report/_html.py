@@ -145,6 +145,9 @@ def _chart_for_column(stats: ColumnStats, renderer: ChartRenderer, idx: int) -> 
     if isinstance(stats, CategoricalStats) and stats.top_values:
         labels = [str(tv["value"]) for tv in stats.top_values]
         values = [tv["count"] for tv in stats.top_values]
+        if stats.other_values is not None:
+            labels.append("Other")
+            values.append(stats.other_values.count)
         return renderer.bar_horizontal(div_id, labels, values, title="Top Values")
 
     if isinstance(stats, BooleanStats):

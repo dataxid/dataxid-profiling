@@ -31,7 +31,7 @@ report = ProfileReport(pd.read_csv("data.csv"))
   <img src="docs/report-overview.png" alt="Dataset overview and alerts" width="700">
 </p>
 
-**Column details** — per-column statistics, top value distribution, and word clouds for categorical data.
+**Column details** — per-column statistics, top value distribution with an explicit "Other" rollup for the long tail, and word clouds for categorical data.
 
 <p align="center">
   <img src="docs/report-columns.png" alt="Column details with charts and word cloud" width="700">
@@ -56,6 +56,7 @@ report = ProfileReport(pd.read_csv("data.csv"))
 - 7 data quality alerts out of the box
 - 5 correlation types: Pearson, Spearman, Kendall, Cramér's V, Phi K
 - Interactions: scatter plot + box plot with dynamic column selection
+- Categorical value counts keep the long tail via an explicit "Other" rollup (`other_values`)
 - Two modes: `"complete"` for deep analysis, `"overview"` for speed
 - Fully typed
 

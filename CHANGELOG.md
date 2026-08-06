@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - 2026-08-06
+
+### Added
+
+- Categorical value counts keep the long tail via an "Other" rollup (`other_values`: `count`, `distinct_remaining`), shown in the HTML top-values chart and column stats and serialized in `to_dict()` / `to_json()`
+- Pairwise relationship helpers: joint histogram grids (numeric bins / categorical top-N + "Other"), scatter points with optional z encoding (numeric magnitude or categorical series), and category × numeric box plots
+
+### Dependencies
+
+- Bump `pygments` 2.19.2 → 2.20.0 (#3)
+- Bump `pillow` 12.1.1 → 12.2.0 (#4)
+- Bump `pytest` (dev) 9.0.2 → 9.0.3 (#5)
+
 ## [0.3.0] - 2026-03-28
 
 ### Added
@@ -57,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - CSV and Parquet file path ingestion
 - PEP 561 `py.typed` marker
 
+[0.4.0]: https://github.com/dataxid/dataxid-profiling/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/dataxid/dataxid-profiling/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/dataxid/dataxid-profiling/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/dataxid/dataxid-profiling/releases/tag/v0.1.0
