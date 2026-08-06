@@ -5,13 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.4.0] - 2026-06-27
+## [0.4.0] - 2026-08-06
 
 ### Added
 
 - Categorical columns now keep their full distribution — top-N values plus an explicit "Other" rollup, so the long tail is never silently dropped
 - "Other" rollup reports how many rows and how many distinct categories fall beyond the top-N, making truncation honest and visible
 - New `other_values` field on `CategoricalStats` (`count`, `distinct_remaining`), serialized in `to_dict()` / `to_json()` — null when there is no tail to summarize
+- Pairwise relationship helpers: joint histogram grids (numeric bins / categorical top-N + "Other"), scatter points with optional z encoding (numeric magnitude or categorical series), and category × numeric box plots
 
 ### Dependencies
 
